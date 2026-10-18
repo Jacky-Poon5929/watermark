@@ -1,0 +1,1911 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watermark Studio</title>
+<style>
+:root {
+  /* palette: #B1B2FF · #AAC4FF · #D2DAFF · #EEF1FF */
+  --bg: #EEF1FF;
+  --panel: #ffffff;
+  --panel-2: #F6F8FF;
+  --border: #D2DAFF;
+  --border-strong: #AAC4FF;
+  --text: #1c1d3a;
+  --muted: #5d6286;
+  --faint: #8e93b8;
+  --accent: #B1B2FF;
+  --accent-hover: #AAC4FF;
+  --accent-ink: #5557c8;      /* deeper shade of #B1B2FF for small text, icons and outlines */
+  --on-accent: #1c1d3a;       /* text on top of accent fills */
+  --accent-weak: #EEF1FF;
+  --accent-ring: rgba(177, 178, 255, .45);
+  --danger: #dc2626;
+  --ok: #16a34a;
+  --stage: #D2DAFF;
+  --checker: #c4cdf6;
+  --shadow-sm: 0 1px 2px rgba(28, 29, 58, .06);
+  --shadow: 0 1px 2px rgba(28, 29, 58, .06), 0 10px 30px rgba(85, 87, 200, .12);
+  --radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0f1d;
+    --panel: #15172a;
+    --panel-2: #1b1e35;
+    --border: #272b4a;
+    --border-strong: #363b62;
+    --text: #EEF1FF;
+    --muted: #a7aed6;
+    --faint: #6f76a3;
+    --accent: #B1B2FF;
+    --accent-hover: #AAC4FF;
+    --accent-ink: #B1B2FF;
+    --on-accent: #1c1d3a;
+    --accent-weak: #22254a;
+    --accent-ring: rgba(177, 178, 255, .3);
+    --stage: #0b0c18;
+    --checker: #171a2e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  font: 13.5px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.i { flex: none; display: block; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  height: 58px; flex: none; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  color: var(--on-accent); background: var(--accent);
+}
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 550; color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent); padding: 3px 9px; border-radius: 999px;
+}
+.top-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 34px; padding: 0 13px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--border-strong); background: var(--panel); font-weight: 550;
+  box-shadow: var(--shadow-sm); transition: background .12s, border-color .12s, opacity .12s;
+}
+.btn:hover { background: var(--panel-2); }
+.btn:focus-visible, .icon-btn:focus-visible, .chip:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.sm { height: 29px; padding: 0 10px; font-size: 12.5px; border-radius: 7px; }
+.btn.lg { height: 40px; padding: 0 18px; font-size: 14px; }
+.btn.ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+.btn.ghost:hover { background: var(--panel-2); color: var(--text); }
+.btn.danger-text:hover { color: var(--danger); }
+.icon-btn {
+  width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 7px;
+  border: 0; background: transparent; color: var(--muted); cursor: pointer;
+}
+.icon-btn:hover { background: var(--panel-2); color: var(--text); }
+.icon-btn.danger:hover { color: var(--danger); }
+
+/* ---------- layout ---------- */
+.app { flex: 1; min-height: 0; display: grid; grid-template-columns: 296px minmax(0, 1fr) 348px; }
+.panel { background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.panel.left { border-right: 1px solid var(--border); }
+.panel.right { border-left: 1px solid var(--border); overflow-y: auto; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
+.panel-head h2, .block-head h3 { margin: 0; font-size: 13px; font-weight: 650; letter-spacing: .01em; }
+.pill { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+
+/* ---------- dropzone & grid ---------- */
+.dropzone {
+  margin: 0 16px; padding: 16px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius);
+  text-align: center; background: var(--panel-2); transition: border-color .15s, background .15s;
+}
+.dropzone.over { border-color: var(--accent-ink); background: var(--accent-weak); }
+.dropzone p { margin: 6px 0 12px; color: var(--muted); font-size: 12.5px; }
+.dropzone .dz-icon { color: var(--accent-ink); display: inline-grid; place-items: center; }
+.dz-actions { display: flex; gap: 8px; justify-content: center; }
+.list-tools { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; min-height: 40px; }
+.list-tools .summary { color: var(--muted); font-size: 12px; }
+.grid {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; align-content: start;
+}
+.tile {
+  position: relative; aspect-ratio: 1 / 1; border-radius: 8px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--border);
+}
+.tile-in { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; }
+.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .2s; }
+.tile img.ld { opacity: 1; }
+.tile.active { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.tile.bad::after {
+  content: "Can't read"; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 10.5px; color: var(--danger); font-weight: 600;
+}
+.tile-name {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 6px 4px; font-size: 10px; color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .65)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tile-x {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 6px; border: 0;
+  display: grid; place-items: center; background: rgba(0, 0, 0, .55); color: #fff; cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.tile:hover .tile-x { opacity: 1; }
+
+/* ---------- stage ---------- */
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--stage); }
+.stage-bar {
+  flex: none; height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 14px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+.nav { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.nav .meta { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.nav .meta b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.nav .meta span { color: var(--muted); font-size: 11.5px; }
+.stage-hint { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 10px; }
+.stage-area { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; }
+#preview {
+  display: block; border-radius: 3px; box-shadow: var(--shadow); touch-action: none;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%);
+  background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.empty { text-align: center; max-width: 380px; padding: 24px; }
+.empty .big-icon {
+  width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px; display: grid; place-items: center;
+  background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow);
+}
+.empty h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: -.02em; }
+.empty p { color: var(--muted); margin: 0 0 18px; }
+.empty .dz-actions { margin-bottom: 18px; }
+.empty .fine { font-size: 12px; color: var(--faint); }
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); backdrop-filter: blur(2px);
+}
+.drop-overlay div {
+  padding: 22px 30px; border-radius: 16px; background: var(--panel); box-shadow: var(--shadow);
+  font-weight: 600; font-size: 15px; border: 2px dashed var(--accent-ink); display: flex; gap: 10px; align-items: center;
+}
+
+/* ---------- right panel ---------- */
+.block { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+.block-head .acts { display: flex; gap: 6px; }
+.layers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.layer {
+  display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--panel); transition: border-color .12s, background .12s;
+}
+.layer:hover { border-color: var(--border-strong); }
+.layer.sel { border-color: var(--accent); background: var(--accent-weak); box-shadow: 0 0 0 3px var(--accent-ring); }
+.layer.off .layer-name { opacity: .45; text-decoration: line-through; }
+.layer-ico {
+  width: 30px; height: 30px; border-radius: 7px; flex: none; display: grid; place-items: center; overflow: hidden;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+}
+.layer-ico img { width: 100%; height: 100%; object-fit: contain; }
+.layer-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 550; }
+.layer-name small { display: block; color: var(--muted); font-weight: 450; font-size: 11px; }
+.layer-acts { display: flex; gap: 0; }
+.layers-empty { color: var(--muted); font-size: 12.5px; padding: 4px 0 2px; }
+.starter { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.starter button {
+  text-align: left; padding: 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer;
+}
+.starter button:hover { border-color: var(--accent); }
+.starter b { display: block; font-size: 12.5px; }
+.starter span { font-size: 11.5px; color: var(--muted); }
+
+.editor .sec { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 16px 0 8px; }
+.editor .sec:first-child { margin-top: 0; }
+.field { margin-bottom: 11px; }
+.flabel { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; font-size: 12.5px; color: var(--muted); }
+.flabel output { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 550; font-size: 12px; }
+.input {
+  width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong);
+  background: var(--panel); outline: none; transition: border-color .12s, box-shadow .12s;
+}
+textarea.input { height: auto; min-height: 58px; padding: 8px 10px; resize: vertical; line-height: 1.4; }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+select.input { padding-right: 6px; }
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 18px; margin: 2px 0; background: transparent; cursor: pointer;
+  --track: linear-gradient(to right, var(--accent) var(--p, 50%), var(--border) var(--p, 50%));
+}
+input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 99px; background: var(--track); }
+input[type=range]::-moz-range-track { height: 5px; border-radius: 99px; background: var(--track); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5.5px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent-ink); box-shadow: var(--shadow-sm);
+}
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--accent-ink); }
+input[type=range]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 4px; }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+.row { display: flex; align-items: center; gap: 8px; }
+.row + .row, .row + .field, .field + .row { margin-top: 8px; }
+.row.wrap { flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0 10px; }
+.chip {
+  font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2);
+  cursor: pointer; color: var(--muted); font-family: ui-monospace, Menlo, monospace;
+}
+.chip:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+.seg { display: flex; padding: 2px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); gap: 2px; }
+.seg button {
+  flex: 1; height: 28px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; color: var(--muted);
+  font-weight: 550; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
+.tbtn {
+  width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--panel);
+  cursor: pointer; display: grid; place-items: center; font-family: Georgia, serif; font-size: 15px;
+}
+.tbtn.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent-ink); }
+.swatch {
+  position: relative; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-strong); overflow: hidden; flex: none; cursor: pointer;
+}
+.swatch input { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); border: 0; padding: 0; cursor: pointer; }
+.switch { display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; font-weight: 550; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .sw { width: 30px; height: 18px; border-radius: 99px; background: var(--border-strong); position: relative; transition: background .15s; flex: none; }
+.switch .sw::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s;
+}
+.switch input:checked + .sw { background: var(--accent); }
+.switch input:checked + .sw::after { transform: translateX(12px); }
+.switch input:focus-visible + .sw { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.effect { border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; background: var(--panel-2); }
+.effect .sub { margin-top: 9px; }
+.effect .sub .field:last-child { margin-bottom: 0; }
+.anchor-wrap { display: flex; gap: 14px; align-items: flex-start; }
+.anchors {
+  display: grid; grid-template-columns: repeat(3, 30px); gap: 4px; padding: 5px; border-radius: 10px; flex: none;
+  background: var(--panel-2); border: 1px solid var(--border);
+}
+.anchors button {
+  width: 30px; height: 30px; border-radius: 6px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center;
+}
+.anchors button::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); transition: all .12s; }
+.anchors button:hover::after { background: var(--muted); }
+.anchors button.on { background: var(--panel); box-shadow: var(--shadow-sm); }
+.anchors button.on::after { background: var(--accent-ink); width: 10px; height: 10px; }
+.note { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.note.accent { color: var(--accent-ink); }
+.logo-box { display: flex; gap: 10px; align-items: center; }
+.logo-box .thumb {
+  width: 56px; height: 56px; border-radius: 9px; border: 1px solid var(--border); flex: none; display: grid; place-items: center; overflow: hidden;
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+}
+.logo-box .thumb img { max-width: 100%; max-height: 100%; }
+.preset-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.preset-list li { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
+.preset-list li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foot-note { padding: 14px 16px 20px; color: var(--faint); font-size: 11.5px; display: flex; gap: 7px; align-items: flex-start; }
+
+/* ---------- modal ---------- */
+.modal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(8, 10, 16, .5); backdrop-filter: blur(3px); }
+.modal-card {
+  width: min(540px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+  background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--border);
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 6px; }
+.modal-head h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+.modal-body { padding: 10px 20px 4px; }
+.modal-body .field { margin-bottom: 16px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px 18px; }
+.dest { display: grid; gap: 8px; }
+.dest-card {
+  display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border-strong); cursor: pointer;
+}
+.dest-card:has(input:checked) { border-color: var(--accent); background: var(--accent-weak); box-shadow: 0 0 0 3px var(--accent-ring); }
+.dest-card.disabled { opacity: .5; cursor: not-allowed; }
+.dest-card input { margin-top: 3px; }
+.dest-card b { display: block; font-weight: 600; }
+.dest-card small { color: var(--muted); font-size: 12px; }
+.check { display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer; }
+.num { width: 92px; }
+.hint { font-size: 11.5px; color: var(--faint); }
+.example { margin-top: 6px; font-size: 12px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+
+.run { padding: 26px 22px 6px; }
+.run-title { font-size: 17px; font-weight: 650; margin-bottom: 4px; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+.run-sub { color: var(--muted); margin-bottom: 18px; }
+.bar { height: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+.bar div { height: 100%; width: 0; border-radius: 99px; background: var(--accent); transition: width .2s; }
+.run-stats { display: flex; justify-content: space-between; margin-top: 10px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.run-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.run-file { margin-top: 14px; font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, Menlo, monospace; }
+.run-errors { margin-top: 14px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 10px; padding: 8px 12px; }
+.run-errors summary { cursor: pointer; color: var(--danger); font-weight: 600; }
+.run-errors ul { margin: 8px 0 2px; padding-left: 18px; max-height: 160px; overflow: auto; font-size: 12px; color: var(--muted); }
+.done-icon { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--ok); }
+.done-icon.warn { background: #d97706; }
+
+/* ---------- toast ---------- */
+.toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.toast {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-weight: 500;
+  background: #1c1d3a; color: #EEF1FF; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); animation: tin .2s ease-out;
+}
+.toast button { background: transparent; border: 0; color: #B1B2FF; font-weight: 650; cursor: pointer; padding: 0; }
+@keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 250px minmax(0, 1fr) 320px; }
+}
+@media (max-width: 860px) {
+  body { height: auto; }
+  .app { display: flex; flex-direction: column; }
+  .panel.left, .panel.right { border: 0; border-bottom: 1px solid var(--border); }
+  .grid { max-height: 260px; }
+  .stage { min-height: 60vh; }
+  .stage-hint { display: none; }
+  .topbar { padding: 0 16px; }
+  .badge { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><svg class="i" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l4.5 13L12 9l4.5 10L21 6"/></svg></div>
+    <span>Watermark Studio</span>
+    <span class="badge" title="Nothing is uploaded. All processing happens on this computer."><span data-icon="lock" data-size="12"></span>Offline &amp; private</span>
+  </div>
+  <div class="top-actions">
+    <button id="btnExport" class="btn primary" disabled><span data-icon="download"></span><span id="exportLabel">Export</span></button>
+  </div>
+</header>
+
+<main class="app">
+  <!-- Images -->
+  <aside class="panel left">
+    <div class="panel-head"><h2>Images</h2><span id="imgCount" class="pill">0</span></div>
+    <div id="dropzone" class="dropzone">
+      <div class="dz-icon"><span data-icon="upload" data-size="22"></span></div>
+      <p>Drop images or whole folders</p>
+      <div class="dz-actions">
+        <button class="btn sm" data-pick="files"><span data-icon="image" data-size="14"></span>Images</button>
+        <button class="btn sm" data-pick="folder"><span data-icon="folder" data-size="14"></span>Folder</button>
+      </div>
+    </div>
+    <div class="list-tools">
+      <span id="imgSummary" class="summary"></span>
+      <button id="btnClear" class="btn ghost sm danger-text" hidden>Clear all</button>
+    </div>
+    <div id="grid" class="grid"></div>
+    <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.tif,.tiff,.avif" hidden>
+    <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+  </aside>
+
+  <!-- Preview -->
+  <section class="stage">
+    <div class="stage-bar">
+      <div class="nav">
+        <button class="icon-btn" id="prevBtn" title="Previous (←)"><span data-icon="left"></span></button>
+        <button class="icon-btn" id="nextBtn" title="Next (→)"><span data-icon="right"></span></button>
+        <div class="meta"><b id="previewName">No image</b><span id="previewInfo">Add images to begin</span></div>
+      </div>
+      <div class="stage-hint">
+        <span id="dragHint">Drag a watermark to move it</span>
+        <button class="btn sm" id="compareBtn" title="Hold to see the original"><span data-icon="eye" data-size="14"></span>Hold to compare</button>
+      </div>
+    </div>
+    <div class="stage-area" id="stageArea">
+      <div class="empty" id="emptyState">
+        <div class="big-icon"><span data-icon="layers" data-size="28"></span></div>
+        <h1>Watermark one image or thousands</h1>
+        <p>Drop images or folders anywhere on this window. Design your watermark once, then export the whole batch.</p>
+        <div class="dz-actions">
+          <button class="btn primary lg" data-pick="files"><span data-icon="image"></span>Choose images</button>
+          <button class="btn lg" data-pick="folder"><span data-icon="folder"></span>Choose folder</button>
+        </div>
+        <div class="fine">JPG · PNG · WebP · GIF · BMP · AVIF. Nothing leaves your computer.</div>
+      </div>
+      <canvas id="preview" hidden></canvas>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <aside class="panel right">
+    <section class="block">
+      <div class="block-head">
+        <h3>Watermarks</h3>
+        <div class="acts">
+          <button class="btn sm" id="addText"><span data-icon="type" data-size="14"></span>Text</button>
+          <button class="btn sm" id="addLogo"><span data-icon="image" data-size="14"></span>Logo</button>
+        </div>
+      </div>
+      <ul id="layerList" class="layers"></ul>
+      <div id="starter" hidden>
+        <div class="layers-empty">Add a text or logo watermark, or start from a style:</div>
+        <div class="starter" id="starterGrid"></div>
+      </div>
+      <input type="file" id="logoInput" accept="image/*" hidden>
+      <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" hidden>
+    </section>
+
+    <section class="block editor" id="editor" hidden></section>
+
+    <section class="block">
+      <div class="block-head">
+        <h3>Presets</h3>
+        <button class="btn sm" id="savePreset"><span data-icon="save" data-size="14"></span>Save current</button>
+      </div>
+      <div class="note" id="presetEmpty">Save your watermark setup to reuse it later.</div>
+      <ul class="preset-list" id="presetList"></ul>
+    </section>
+    <div class="foot-note"><span data-icon="lock" data-size="13"></span><span>Runs entirely in your browser, with no internet needed. Your images are never uploaded.</span></div>
+  </aside>
+</main>
+
+<!-- Export dialog -->
+<div class="modal" id="exportModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+    <div id="exportSetup">
+      <div class="modal-head"><h2 id="exportTitle">Export images</h2><button class="icon-btn" data-close title="Close"><span data-icon="x"></span></button></div>
+      <div class="modal-body">
+        <div class="field">
+          <div class="flabel"><span>Format</span></div>
+          <div class="seg" id="fmtSeg">
+            <button data-v="original">Same as original</button><button data-v="jpeg">JPEG</button><button data-v="png">PNG</button><button data-v="webp">WebP</button>
+          </div>
+        </div>
+        <div class="field" id="qualityField">
+          <div class="flabel"><span>Quality</span><output id="qualityOut"></output></div>
+          <input type="range" id="quality" min="40" max="100" step="1">
+        </div>
+        <div class="field">
+          <div class="flabel"><span>Size</span></div>
+          <div class="seg" id="resizeSeg">
+            <button data-v="none">Original size</button><button data-v="fit">Fit within</button><button data-v="percent">Scale</button>
+          </div>
+          <div class="row" id="fitRow" style="margin-top:8px">
+            <input type="number" class="input num" id="maxW" min="16" max="20000"> <span class="hint">×</span>
+            <input type="number" class="input num" id="maxH" min="16" max="20000"> <span class="hint">px max (never enlarges)</span>
+          </div>
+          <div id="pctRow" style="margin-top:8px">
+            <div class="flabel"><span>Scale</span><output id="pctOut"></output></div>
+            <input type="range" id="pct" min="5" max="100" step="1">
+          </div>
+        </div>
+        <div class="field">
+          <div class="flabel"><span>File name</span><span class="hint">{name} · {n} · {date}</span></div>
+          <input type="text" class="input" id="pattern" spellcheck="false">
+          <div class="example" id="nameExample"></div>
+        </div>
+        <div class="field">
+          <div class="flabel"><span>Save to</span></div>
+          <div class="dest">
+            <label class="dest-card" id="destFolderCard">
+              <input type="radio" name="dest" value="folder">
+              <div><b>A folder on this computer</b><small id="destFolderNote">Writes files straight into a folder you choose. Best for big batches.</small></div>
+            </label>
+            <label class="dest-card">
+              <input type="radio" name="dest" value="zip">
+              <div><b>Download</b><small>One image downloads directly. Multiple images download as a ZIP, split into 1 GB parts if needed.</small></div>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="keepStruct"> Keep sub-folder structure</label>
+          <label class="check" id="overwriteRow"><input type="checkbox" id="overwrite"> Overwrite files that already exist</label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" data-close>Cancel</button>
+        <button class="btn primary" id="startExport"><span data-icon="download"></span><span id="startLabel">Start</span></button>
+      </div>
+    </div>
+
+    <div id="exportRun" hidden>
+      <div class="run">
+        <div class="run-title"><span id="runIcon"></span><span id="runTitle">Watermarking…</span></div>
+        <div class="run-sub" id="runSub">Keep this tab open while it works.</div>
+        <div class="bar"><div id="runBar"></div></div>
+        <div class="run-stats"><span id="runCount">0 / 0</span><span id="runPct">0%</span></div>
+        <div class="run-meta"><span id="runRate">&nbsp;</span><span id="runEta"></span></div>
+        <div class="run-file" id="runFile">&nbsp;</div>
+        <details class="run-errors" id="runErrors" hidden><summary id="runErrSum"></summary><ul id="runErrList"></ul></details>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="runCancel">Cancel</button>
+        <button class="btn primary" id="runClose" hidden>Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drop-overlay" id="dropOverlay" hidden><div><span data-icon="upload"></span>Drop to add images</div></div>
+<div class="toasts" id="toasts"></div>
+
+<!-- Shared rendering core: used by the preview AND injected into the export workers -->
+<script id="wm-core">
+var WM = (function () {
+  'use strict';
+  var ANCH = { tl: [0, 0], tc: [1, 0], tr: [2, 0], ml: [0, 1], mc: [1, 1], mr: [2, 1], bl: [0, 2], bc: [1, 2], br: [2, 2] };
+  var tintCache = new WeakMap();
+
+  function fmt(t, vars) {
+    return String(t == null ? '' : t).replace(/\{(\w+)\}/g, function (m, k) {
+      return vars && vars[k] != null ? String(vars[k]) : m;
+    });
+  }
+  function makeCanvas(w, h) {
+    if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+    var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+  }
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+  function tinted(src, color) {
+    var m = tintCache.get(src);
+    if (!m) { m = new Map(); tintCache.set(src, m); }
+    var c = m.get(color);
+    if (c) return c;
+    c = makeCanvas(src.width, src.height);
+    var x = c.getContext('2d');
+    x.drawImage(src, 0, 0);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = color;
+    x.fillRect(0, 0, c.width, c.height);
+    m.set(color, c);
+    return c;
+  }
+  function fontString(L, fs) {
+    return (L.italic ? 'italic ' : '') + (L.bold ? 'bold ' : '') + fs + 'px ' + L.font;
+  }
+  function setSpacing(c, px) {
+    if ('letterSpacing' in c) c.letterSpacing = px + 'px';
+  }
+
+  // Builds a drawable item centred on (0,0) with its unrotated size.
+  function prepare(ctx, L, ref, assets, vars) {
+    if (L.type === 'text') {
+      var text = fmt(L.text, vars);
+      if (!text.trim()) return null;
+      var fs = Math.max(1, (L.size / 100) * ref);
+      var lines = text.split('\n');
+      var sp = ((L.spacing || 0) / 100) * fs;
+      ctx.font = fontString(L, fs);
+      setSpacing(ctx, sp);
+      var lh = fs * 1.2;
+      var tw = 1;
+      for (var i = 0; i < lines.length; i++) tw = Math.max(tw, ctx.measureText(lines[i]).width);
+      var th = lh * lines.length;
+      var ow = L.outline ? ((L.outlineWidth || 0) / 100) * fs : 0;
+      var pad = L.bg ? ((L.bgPadding || 0) / 100) * fs : 0;
+      var w = tw + ow + pad * 2, h = th + ow + pad * 2;
+      var align = L.align || 'center';
+      return {
+        w: w, h: h, base: fs,
+        draw: function (c) {
+          if (L.bg) {
+            c.save();
+            c.shadowColor = 'rgba(0,0,0,0)';
+            c.globalAlpha *= (L.bgOpacity == null ? 100 : L.bgOpacity) / 100;
+            c.fillStyle = L.bgColor || '#000000';
+            roundRect(c, -w / 2, -h / 2, w, h, ((L.bgRadius || 0) / 100) * Math.min(w, h) / 2);
+            c.fill();
+            c.restore();
+          }
+          c.font = fontString(L, fs);
+          setSpacing(c, sp);
+          c.textBaseline = 'middle';
+          c.textAlign = align;
+          var x = align === 'left' ? -tw / 2 : align === 'right' ? tw / 2 + sp : sp / 2;
+          for (var j = 0; j < lines.length; j++) {
+            var y = -th / 2 + lh * (j + 0.5);
+            if (ow > 0) {
+              c.lineJoin = 'round'; c.miterLimit = 2; c.lineWidth = ow; c.strokeStyle = L.outlineColor || '#000000';
+              c.strokeText(lines[j], x, y);
+            }
+            c.fillStyle = L.color || '#ffffff';
+            c.fillText(lines[j], x, y);
+          }
+        }
+      };
+    }
+    var src = assets && assets[L.assetId];
+    if (!src) return null;
+    var img = L.tint && L.tint !== 'none' ? tinted(src, L.tint === 'custom' ? (L.tintColor || '#ffffff') : L.tint) : src;
+    var iw = Math.max(1, (L.size / 100) * ref);
+    var ih = iw * src.height / src.width;
+    return {
+      w: iw, h: ih, base: Math.min(iw, ih) * 0.6,
+      draw: function (c) { c.drawImage(img, -iw / 2, -ih / 2, iw, ih); }
+    };
+  }
+
+  // Draws every visible layer. Returns placement boxes (for hit-testing in the preview).
+  function render(ctx, W, H, layers, assets, vars) {
+    var ref = Math.min(W, H);
+    var boxes = [];
+    for (var li = 0; li < layers.length; li++) {
+      var L = layers[li];
+      if (!L.visible) { boxes.push(null); continue; }
+      ctx.save();
+      var it = prepare(ctx, L, ref, assets, vars);
+      if (!it) { ctx.restore(); boxes.push(null); continue; }
+      ctx.globalAlpha = Math.max(0, Math.min(1, L.opacity / 100));
+      ctx.globalCompositeOperation = L.blend || 'source-over';
+      if (L.shadow) {
+        ctx.shadowColor = L.shadowColor || '#000000';
+        ctx.shadowBlur = ((L.shadowBlur || 0) / 100) * it.base;
+        ctx.shadowOffsetX = ctx.shadowOffsetY = it.base * ((L.shadowDist == null ? 6 : L.shadowDist) / 100);
+      }
+      var rad = (L.rotation || 0) * Math.PI / 180;
+      if (L.mode === 'tile') {
+        var g = ((L.gap || 0) / 100) * ref;
+        var sx = Math.max(it.w + g, ref * 0.03), sy = Math.max(it.h + g, ref * 0.03);
+        var cos = Math.cos(rad), sin = Math.sin(rad);
+        var R = Math.hypot(W, H) / 2 + Math.max(sx, sy);
+        var nx = Math.ceil(R / sx) + 1, ny = Math.ceil(R / sy) + 1;
+        var d = Math.hypot(it.w, it.h) / 2 + 2;
+        ctx.translate(W / 2, H / 2);
+        ctx.rotate(rad);
+        for (var j = -ny; j <= ny; j++) {
+          var off = L.stagger && (j & 1) ? sx / 2 : 0;
+          for (var i = -nx; i <= nx; i++) {
+            var ox = i * sx + off, oy = j * sy;
+            var px = W / 2 + ox * cos - oy * sin, py = H / 2 + ox * sin + oy * cos;
+            if (px < -d || px > W + d || py < -d || py > H + d) continue;
+            ctx.translate(ox, oy);
+            it.draw(ctx);
+            ctx.translate(-ox, -oy);
+          }
+        }
+        boxes.push({ tile: true });
+      } else {
+        var ac = Math.abs(Math.cos(rad)), as = Math.abs(Math.sin(rad));
+        var bw = it.w * ac + it.h * as, bh = it.w * as + it.h * ac;
+        var cx, cy;
+        if (L.anchor === 'custom') {
+          cx = (L.x == null ? 0.5 : L.x) * W; cy = (L.y == null ? 0.5 : L.y) * H;
+        } else {
+          var a = ANCH[L.anchor] || ANCH.mc, m = ((L.margin || 0) / 100) * ref;
+          cx = a[0] === 0 ? m + bw / 2 : a[0] === 1 ? W / 2 : W - m - bw / 2;
+          cy = a[1] === 0 ? m + bh / 2 : a[1] === 1 ? H / 2 : H - m - bh / 2;
+        }
+        ctx.translate(cx, cy);
+        ctx.rotate(rad);
+        it.draw(ctx);
+        boxes.push({ cx: cx, cy: cy, w: it.w, h: it.h, rad: rad });
+      }
+      ctx.restore();
+    }
+    return boxes;
+  }
+
+  function targetSize(w, h, o) {
+    var s = 1;
+    if (o.resize === 'fit') s = Math.min(1, (o.maxW || Infinity) / w, (o.maxH || Infinity) / h);
+    else if (o.resize === 'percent') s = Math.max(0.01, (o.percent || 100) / 100);
+    return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
+  }
+  function encode(cv, mime, q) {
+    if (cv.convertToBlob) return cv.convertToBlob({ type: mime, quality: q });
+    return new Promise(function (res, rej) {
+      cv.toBlob(function (b) { b ? res(b) : rej(new Error('Could not encode image')); }, mime, q);
+    });
+  }
+  var CRC = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(u8) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Full pipeline for one image: resize → draw → watermark → encode.
+  async function processSource(src, sw, sh, o, layers, assets, vars) {
+    var size = targetSize(sw, sh, o);
+    var cv = makeCanvas(size[0], size[1]);
+    var ctx = cv.getContext('2d');
+    if (o.mime === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size[0], size[1]); }
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, size[0], size[1]);
+    render(ctx, size[0], size[1], layers, assets, vars);
+    var blob = await encode(cv, o.mime, o.quality);
+    cv.width = cv.height = 1;
+    var buf = await blob.arrayBuffer();
+    return { buf: buf, crc: o.crc ? crc32(new Uint8Array(buf)) : 0, mime: blob.type || o.mime };
+  }
+
+  return { render: render, processSource: processSource, fmt: fmt, makeCanvas: makeCanvas, crc32: crc32 };
+})();
+</script>
+
+<script>
+'use strict';
+/* =============================== helpers =============================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const pad2 = n => String(n).padStart(2, '0');
+const errMsg = e => (e && (e.message || e.name)) || String(e);
+const IMG_EXT = /\.(jpe?g|jfif|pjpeg|png|webp|gif|bmp|avif|ico|heic|heif|tiff?)$/i;
+
+const ICONS = {
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  type: '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  left: '<polyline points="15 18 9 12 15 6"/>',
+  right: '<polyline points="9 18 15 12 9 6"/>',
+  up: '<polyline points="18 15 12 9 6 15"/>',
+  down: '<polyline points="6 9 12 15 18 9"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  alert: '<line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  single: '<rect x="3" y="3" width="18" height="18" rx="2"/><rect x="13" y="13" width="5" height="5" rx="1"/>',
+  tile: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+  alignL: '<line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/>',
+  alignC: '<line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/>',
+  alignR: '<line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/>',
+};
+const icon = (n, s = 16) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ''}</svg>`;
+function paintRange(el) {
+  const min = +el.min || 0, max = +el.max || 100;
+  el.style.setProperty('--p', ((+el.value - min) / (max - min || 1)) * 100 + '%');
+}
+const paintRanges = (root = document) => $$('input[type=range]', root).forEach(paintRange);
+document.addEventListener('input', e => { if (e.target.type === 'range') paintRange(e.target); });
+
+function hydrateIcons(root = document) {
+  $$('[data-icon]', root).forEach(el => { el.outerHTML = icon(el.dataset.icon, +el.dataset.size || 16); });
+}
+
+function toast(msg, action) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${esc(msg)}</span>`;
+  if (action) {
+    const b = document.createElement('button');
+    b.textContent = action.label;
+    b.onclick = () => { action.run(); el.remove(); };
+    el.appendChild(b);
+  }
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), action ? 6000 : 3200);
+}
+
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 120000);
+}
+
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const baseName = n => n.replace(/\.[^./]+$/, '');
+const extOf = n => ((n.match(/\.([^./]+)$/) || [])[1] || '');
+
+/* =============================== capabilities =============================== */
+const CAN = {
+  fsAccess: 'showDirectoryPicker' in window,
+  webp: (() => { try { const c = document.createElement('canvas'); c.width = c.height = 1; return c.toDataURL('image/webp').startsWith('data:image/webp'); } catch { return false; } })(),
+  offscreen: (() => { try { return typeof OffscreenCanvas !== 'undefined' && !!new OffscreenCanvas(1, 1).getContext('2d'); } catch { return false; } })(),
+};
+
+/* =============================== fonts =============================== */
+const FONTS = [
+  ['Helvetica', '"Helvetica Neue", Helvetica, Arial, sans-serif'],
+  ['Arial', 'Arial, Helvetica, sans-serif'],
+  ['Avenir', '"Avenir Next", Avenir, "Segoe UI", sans-serif'],
+  ['Futura', 'Futura, "Century Gothic", "Trebuchet MS", sans-serif'],
+  ['Gill Sans', '"Gill Sans", "Gill Sans MT", Calibri, sans-serif'],
+  ['Verdana', 'Verdana, Geneva, sans-serif'],
+  ['Trebuchet', '"Trebuchet MS", sans-serif'],
+  ['Impact', 'Impact, "Arial Black", sans-serif'],
+  ['Arial Black', '"Arial Black", "Arial Bold", sans-serif'],
+  ['Georgia', 'Georgia, serif'],
+  ['Times', '"Times New Roman", Times, serif'],
+  ['Palatino', 'Palatino, "Palatino Linotype", "Book Antiqua", serif'],
+  ['Baskerville', 'Baskerville, "Baskerville Old Face", Georgia, serif'],
+  ['Didot', 'Didot, "Bodoni 72", "Bodoni MT", serif'],
+  ['Copperplate', 'Copperplate, "Copperplate Gothic Light", serif'],
+  ['Courier', '"Courier New", Courier, monospace'],
+  ['Menlo / Consolas', 'Menlo, Consolas, Monaco, monospace'],
+  ['Brush Script', '"Brush Script MT", "Brush Script Std", cursive'],
+  ['Snell Roundhand', '"Snell Roundhand", "Segoe Script", cursive'],
+  ['Marker Felt', '"Marker Felt", "Comic Sans MS", cursive'],
+];
+
+/* =============================== state =============================== */
+const state = {
+  items: [],            // {id, file, name, rel, thumb, w, h}
+  byId: new Map(),
+  currentId: null,
+  layers: [],
+  selectedId: null,
+  assets: {},           // id -> {blob, dataUrl, bmp, name}
+  fonts: [],            // {family, label, buffer, css}
+  presets: [],
+};
+const previewAssets = () => {
+  const m = {};
+  for (const [id, a] of Object.entries(state.assets)) if (a.bmp) m[id] = a.bmp;
+  return m;
+};
+const selLayer = () => state.layers.find(l => l.id === state.selectedId) || null;
+
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+
+/* =============================== layers =============================== */
+const COMMON = {
+  visible: true, opacity: 80, rotation: 0, blend: 'source-over',
+  shadow: false, shadowColor: '#000000', shadowBlur: 40, shadowDist: 6,
+  mode: 'single', anchor: 'br', margin: 3, x: 0.5, y: 0.5, gap: 12, stagger: true,
+};
+function newTextLayer(over = {}) {
+  return Object.assign({
+    id: uid(), type: 'text', text: '© {year} Your Name', font: FONTS[0][1], bold: true, italic: false, align: 'center',
+    color: '#ffffff', size: 4, spacing: 0,
+    outline: false, outlineColor: '#000000', outlineWidth: 8,
+    bg: false, bgColor: '#000000', bgOpacity: 50, bgPadding: 40, bgRadius: 30,
+  }, COMMON, { shadow: true, opacity: 85 }, over);
+}
+function newImageLayer(assetId, over = {}) {
+  return Object.assign({ id: uid(), type: 'image', assetId, size: 18, tint: 'none', tintColor: '#ffffff' }, COMMON, { opacity: 85 }, over);
+}
+
+const STARTERS = [
+  { name: 'Signature', desc: 'Corner credit', layers: () => [newTextLayer()] },
+  { name: 'Tiled', desc: 'Diagonal repeat', layers: () => [newTextLayer({ text: 'SAMPLE', mode: 'tile', rotation: -30, size: 5, opacity: 22, gap: 14, spacing: 18, shadow: false, outline: true, outlineColor: '#000000', outlineWidth: 4 })] },
+  { name: 'Stamp', desc: 'Large centered', layers: () => [newTextLayer({ text: 'PREVIEW', anchor: 'mc', size: 14, rotation: -18, opacity: 35, spacing: 12, shadow: false, outline: true, outlineWidth: 5 })] },
+  { name: 'Label', desc: 'Caption bar', layers: () => [newTextLayer({ text: '{filename}', anchor: 'bl', size: 2.6, bold: false, opacity: 100, shadow: false, bg: true, bgOpacity: 55, bgPadding: 55, bgRadius: 35, margin: 2.5 })] },
+];
+
+function setLayers(layers, selectFirst = true) {
+  state.layers = layers;
+  state.selectedId = selectFirst && layers.length ? layers[layers.length - 1].id : null;
+  refreshLayersUI();
+}
+function refreshLayersUI() {
+  renderLayerList();
+  renderEditor();
+  schedulePreview();
+  persist();
+  updateExportBtn();
+}
+
+function layerTitle(L) {
+  if (L.type === 'text') return (L.text || '').split('\n')[0].trim() || 'Text';
+  return (state.assets[L.assetId] && state.assets[L.assetId].name) || 'Logo';
+}
+function renderLayerList() {
+  const ul = $('#layerList');
+  $('#starter').hidden = state.layers.length > 0;
+  // top of the list = drawn last (on top)
+  ul.innerHTML = state.layers.slice().reverse().map(L => {
+    const a = L.type === 'image' && state.assets[L.assetId];
+    const ico = a ? `<img src="${a.dataUrl}" alt="">` : icon('type', 15);
+    const sub = (L.type === 'text' ? 'Text' : 'Logo') + ' · ' + (L.mode === 'tile' ? 'Tiled' : 'Single');
+    return `<li class="layer ${L.id === state.selectedId ? 'sel' : ''} ${L.visible ? '' : 'off'}" data-id="${L.id}">
+      <span class="layer-ico">${ico}</span>
+      <span class="layer-name"><span class="ln">${esc(layerTitle(L))}</span><small>${sub}</small></span>
+      <span class="layer-acts">
+        <button class="icon-btn" data-act="up" title="Bring forward">${icon('up', 14)}</button>
+        <button class="icon-btn" data-act="down" title="Send backward">${icon('down', 14)}</button>
+        <button class="icon-btn" data-act="vis" title="${L.visible ? 'Hide' : 'Show'}">${icon(L.visible ? 'eye' : 'eyeoff', 14)}</button>
+        <button class="icon-btn" data-act="dup" title="Duplicate">${icon('copy', 14)}</button>
+        <button class="icon-btn danger" data-act="del" title="Delete">${icon('trash', 14)}</button>
+      </span></li>`;
+  }).join('');
+}
+$('#layerList').addEventListener('click', e => {
+  const li = e.target.closest('.layer'); if (!li) return;
+  const id = li.dataset.id, i = state.layers.findIndex(l => l.id === id), L = state.layers[i];
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (!act) { if (state.selectedId !== id) { state.selectedId = id; renderLayerList(); renderEditor(); schedulePreview(); } return; }
+  if (act === 'vis') L.visible = !L.visible;
+  else if (act === 'del') {
+    const prev = state.layers.slice();
+    state.layers.splice(i, 1);
+    if (state.selectedId === id) state.selectedId = state.layers.length ? state.layers[state.layers.length - 1].id : null;
+    toast('Watermark deleted', { label: 'Undo', run: () => { state.layers = prev; state.selectedId = id; refreshLayersUI(); } });
+  } else if (act === 'dup') {
+    const c = Object.assign(JSON.parse(JSON.stringify(L)), { id: uid() });
+    if (c.anchor === 'custom') { c.x = clamp(c.x + 0.03, 0, 1); c.y = clamp(c.y + 0.03, 0, 1); }
+    state.layers.splice(i + 1, 0, c); state.selectedId = c.id;
+  } else if (act === 'up' && i < state.layers.length - 1) [state.layers[i], state.layers[i + 1]] = [state.layers[i + 1], state.layers[i]];
+  else if (act === 'down' && i > 0) [state.layers[i], state.layers[i - 1]] = [state.layers[i - 1], state.layers[i]];
+  refreshLayersUI();
+});
+
+$('#starterGrid').innerHTML = STARTERS.map((s, i) => `<button data-starter="${i}"><b>${s.name}</b><span>${s.desc}</span></button>`).join('');
+$('#starterGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-starter]'); if (!b) return;
+  setLayers(STARTERS[+b.dataset.starter].layers());
+});
+$('#addText').onclick = () => {
+  const L = newTextLayer();
+  // offset new text from existing ones so it doesn't sit on top of another
+  if (state.layers.some(l => l.mode === 'single' && l.anchor === 'br')) L.anchor = 'bl';
+  state.layers.push(L); state.selectedId = L.id; refreshLayersUI();
+  setTimeout(() => { const t = $('#editor textarea'); if (t) { t.focus(); t.select(); } }, 0);
+};
+
+/* ---------- logo assets ---------- */
+let logoReplaceId = null;
+$('#addLogo').onclick = () => { logoReplaceId = null; $('#logoInput').click(); };
+$('#logoInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const id = await addAsset(f, f.name);
+    const L = logoReplaceId && state.layers.find(l => l.id === logoReplaceId);
+    if (L) { L.assetId = id; }
+    else { const N = newImageLayer(id); if (state.layers.some(l => l.mode === 'single' && l.anchor === 'br')) N.anchor = 'tr'; state.layers.push(N); state.selectedId = N.id; }
+    gcAssets();
+    refreshLayersUI();
+  } catch (err) { toast('Could not read that logo: ' + errMsg(err)); }
+});
+function readDataUrl(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+}
+async function addAsset(blob, name, id = uid()) {
+  const bmp = await createImageBitmap(blob);
+  // keep stored logos reasonably sized so presets fit in browser storage
+  let store = blob;
+  if (Math.max(bmp.width, bmp.height) > 2400 || blob.size > 1.5e6) {
+    const s = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    store = await new Promise(r => c.toBlob(r, 'image/png'));
+  }
+  const dataUrl = await readDataUrl(store);
+  state.assets[id] = { blob: store, dataUrl, bmp, name: name || 'Logo' };
+  return id;
+}
+async function assetFromDataUrl(id, dataUrl, name) {
+  if (state.assets[id]) return;
+  const blob = await (await fetch(dataUrl)).blob();
+  const bmp = await createImageBitmap(blob);
+  state.assets[id] = { blob, dataUrl, bmp, name };
+}
+function gcAssets() {
+  const used = new Set(state.layers.filter(l => l.type === 'image').map(l => l.assetId));
+  for (const id of Object.keys(state.assets)) if (!used.has(id)) { state.assets[id].bmp?.close?.(); delete state.assets[id]; }
+}
+
+/* ---------- custom fonts ---------- */
+$('#fontInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const buffer = await f.arrayBuffer();
+    const family = 'WMFont' + uid();
+    const ff = new FontFace(family, buffer.slice(0));
+    await ff.load();
+    document.fonts.add(ff);
+    const css = `"${family}", sans-serif`;
+    state.fonts.push({ family, label: baseName(f.name), buffer, css });
+    const L = selLayer();
+    if (L && L.type === 'text') L.font = css;
+    renderEditor(); schedulePreview(); persist();
+    toast(`Font “${baseName(f.name)}” added`);
+  } catch (err) { toast('Could not load that font file'); }
+});
+
+/* =============================== editor =============================== */
+const BLENDS = [['source-over', 'Normal'], ['multiply', 'Multiply'], ['screen', 'Screen'], ['overlay', 'Overlay'], ['soft-light', 'Soft light'], ['difference', 'Difference']];
+const ANCHORS = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
+
+function fRange(L, k, label, min, max, step, unit, def) {
+  return `<div class="field"><div class="flabel"><span>${label}</span><output data-o="${k}">${fmtNum(L[k])}${unit}</output></div>
+    <input type="range" data-k="${k}" data-unit="${unit}" data-def="${def}" min="${min}" max="${max}" step="${step}" value="${L[k]}" title="Double-click to reset"></div>`;
+}
+const fmtNum = v => (Math.round(v * 10) / 10).toString();
+const fSwitch = (L, k, label) => `<label class="switch"><input type="checkbox" data-k="${k}" data-rr ${L[k] ? 'checked' : ''}><span class="sw"></span><span>${label}</span></label>`;
+const fColor = (L, k, title) => `<label class="swatch" title="${title}" style="background:${L[k]}"><input type="color" data-k="${k}" value="${L[k]}"></label>`;
+const fSelect = (L, k, opts, rr) => `<select class="input" data-k="${k}" ${rr ? 'data-rr' : ''}>${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === L[k] ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+const fSeg = (attr, cur, opts) => `<div class="seg">${opts.map(([v, t]) => `<button data-${attr}="${v}" class="${v === cur ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+
+function renderEditor() {
+  const ed = $('#editor');
+  const L = selLayer();
+  ed.hidden = !L;
+  if (!L) { ed.innerHTML = ''; return; }
+  let h = '';
+  if (L.type === 'text') {
+    const fonts = FONTS.map(([t, v]) => [v, t]).concat(state.fonts.map(f => [f.css, f.label + ' (uploaded)']));
+    if (!fonts.some(([v]) => v === L.font)) fonts.push([L.font, 'Missing font → fallback']);
+    h += `<div class="sec">Text</div>
+      <textarea class="input" data-k="text" rows="2" spellcheck="false" placeholder="Your watermark text">${esc(L.text)}</textarea>
+      <div class="chips">${['©', '®', '™', '{filename}', '{date}', '{year}', '{n}'].map(t => `<button class="chip" data-insert="${t}" title="Insert ${t}">${t}</button>`).join('')}</div>
+      <div class="row"><div class="grow">${fSelect(L, 'font', fonts)}</div><button class="btn sm" data-action="font" title="Use a .ttf / .otf / .woff file">Upload</button></div>
+      <div class="row">
+        <button class="tbtn ${L.bold ? 'on' : ''}" data-flip="bold" title="Bold"><b>B</b></button>
+        <button class="tbtn ${L.italic ? 'on' : ''}" data-flip="italic" title="Italic"><i>I</i></button>
+        <div class="grow">${fSeg('align', L.align, [['left', icon('alignL', 15)], ['center', icon('alignC', 15)], ['right', icon('alignR', 15)]])}</div>
+        ${fColor(L, 'color', 'Text color')}
+      </div>`;
+  } else {
+    const a = state.assets[L.assetId];
+    h += `<div class="sec">Logo</div>
+      <div class="logo-box"><div class="thumb">${a ? `<img src="${a.dataUrl}" alt="">` : ''}</div>
+        <div class="grow"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a ? a.name : 'Missing image')}</div>
+        <button class="btn sm" data-action="replace" style="margin-top:6px">Replace image</button></div></div>
+      <div class="field" style="margin-top:12px"><div class="flabel"><span>Color</span></div>
+        <div class="row"><div class="grow">${fSelect(L, 'tint', [['none', 'Original colors'], ['#ffffff', 'All white'], ['#000000', 'All black'], ['custom', 'Custom color']], true)}</div>
+        ${L.tint === 'custom' ? fColor(L, 'tintColor', 'Logo color') : ''}</div></div>`;
+  }
+
+  h += `<div class="sec">Appearance</div>`;
+  h += L.type === 'text' ? fRange(L, 'size', 'Size', 0.5, 40, 0.1, '%', 4) : fRange(L, 'size', 'Size', 1, 100, 0.5, '%', 18);
+  h += fRange(L, 'opacity', 'Opacity', 0, 100, 1, '%', 80);
+  h += fRange(L, 'rotation', 'Rotation', -180, 180, 1, '°', 0);
+  if (L.type === 'text') h += fRange(L, 'spacing', 'Letter spacing', 0, 100, 1, '%', 0);
+  h += `<div class="field"><div class="flabel"><span>Blend mode</span></div>${fSelect(L, 'blend', BLENDS)}</div>`;
+
+  h += `<div class="sec">Effects</div>`;
+  if (L.type === 'text') {
+    h += `<div class="effect"><div class="row"><div class="grow">${fSwitch(L, 'outline', 'Outline')}</div>${L.outline ? fColor(L, 'outlineColor', 'Outline color') : ''}</div>
+      ${L.outline ? `<div class="sub">${fRange(L, 'outlineWidth', 'Thickness', 1, 40, 1, '%', 8)}</div>` : ''}</div>`;
+  }
+  h += `<div class="effect"><div class="row"><div class="grow">${fSwitch(L, 'shadow', 'Shadow')}</div>${L.shadow ? fColor(L, 'shadowColor', 'Shadow color') : ''}</div>
+    ${L.shadow ? `<div class="sub">${fRange(L, 'shadowBlur', 'Softness', 0, 150, 1, '%', 40)}${fRange(L, 'shadowDist', 'Distance', 0, 40, 1, '%', 6)}</div>` : ''}</div>`;
+  if (L.type === 'text') {
+    h += `<div class="effect"><div class="row"><div class="grow">${fSwitch(L, 'bg', 'Background box')}</div>${L.bg ? fColor(L, 'bgColor', 'Box color') : ''}</div>
+      ${L.bg ? `<div class="sub">${fRange(L, 'bgOpacity', 'Box opacity', 0, 100, 1, '%', 50)}${fRange(L, 'bgPadding', 'Padding', 0, 150, 1, '%', 40)}${fRange(L, 'bgRadius', 'Roundness', 0, 100, 1, '%', 30)}</div>` : ''}</div>`;
+  }
+
+  h += `<div class="sec">Placement</div>
+    <div class="field">${fSeg('mode', L.mode, [['single', icon('single', 14) + 'Single'], ['tile', icon('tile', 14) + 'Tiled']])}</div>`;
+  if (L.mode === 'single') {
+    h += `<div class="anchor-wrap">
+      <div class="anchors" id="anchorGrid">${ANCHORS.map(a => `<button data-anchor="${a}" class="${L.anchor === a ? 'on' : ''}" title="${a}"></button>`).join('')}</div>
+      <div class="grow">${fRange(L, 'margin', 'Edge margin', 0, 25, 0.5, '%', 3)}
+        <div class="note ${L.anchor === 'custom' ? 'accent' : ''}" id="anchorNote">${L.anchor === 'custom' ? 'Custom position. Pick a spot on the grid to snap back.' : 'Or drag it on the preview.'}</div></div></div>`;
+  } else {
+    h += fRange(L, 'gap', 'Spacing', 0, 150, 1, '%', 12);
+    h += `<div class="field">${fSwitch(L, 'stagger', 'Brick pattern (offset rows)')}</div>`;
+  }
+  h += `<div class="note" style="margin-top:10px">Sizes are relative to each image’s shorter side, so the watermark looks the same on every photo, big or small.</div>`;
+  ed.innerHTML = h;
+  paintRanges(ed);
+}
+
+function readInput(el) {
+  if (el.type === 'checkbox') return el.checked;
+  if (el.type === 'range' || el.type === 'number') return parseFloat(el.value);
+  return el.value;
+}
+const ed = $('#editor');
+ed.addEventListener('input', e => {
+  const el = e.target, k = el.dataset.k, L = selLayer();
+  if (!k || !L) return;
+  L[k] = readInput(el);
+  if (el.type === 'range') { const o = ed.querySelector(`[data-o="${k}"]`); if (o) o.textContent = fmtNum(L[k]) + el.dataset.unit; }
+  if (el.type === 'color') el.parentElement.style.background = el.value;
+  if (k === 'text') { const n = $(`#layerList [data-id="${L.id}"] .ln`); if (n) n.textContent = layerTitle(L); }
+  schedulePreview(); persist();
+});
+ed.addEventListener('change', e => { if (e.target.hasAttribute('data-rr')) { renderEditor(); renderLayerList(); } });
+ed.addEventListener('dblclick', e => {
+  const el = e.target; if (el.type !== 'range' || el.dataset.def === undefined) return;
+  el.value = el.dataset.def; el.dispatchEvent(new Event('input', { bubbles: true }));
+});
+ed.addEventListener('click', e => {
+  const L = selLayer(); if (!L) return;
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.insert) {
+    const ta = ed.querySelector('textarea');
+    const s = ta.selectionStart ?? ta.value.length, en = ta.selectionEnd ?? s;
+    ta.value = ta.value.slice(0, s) + b.dataset.insert + ta.value.slice(en);
+    ta.focus(); ta.selectionStart = ta.selectionEnd = s + b.dataset.insert.length;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+  if (b.dataset.flip) { L[b.dataset.flip] = !L[b.dataset.flip]; b.classList.toggle('on', L[b.dataset.flip]); }
+  else if (b.dataset.align) { L.align = b.dataset.align; renderEditor(); }
+  else if (b.dataset.mode) { L.mode = b.dataset.mode; renderEditor(); renderLayerList(); }
+  else if (b.dataset.anchor) { L.anchor = b.dataset.anchor; renderEditor(); }
+  else if (b.dataset.action === 'replace') { logoReplaceId = L.id; $('#logoInput').click(); return; }
+  else if (b.dataset.action === 'font') { $('#fontInput').click(); return; }
+  else return;
+  schedulePreview(); persist();
+});
+
+/* =============================== persistence & presets =============================== */
+function snapshot(layers = state.layers) {
+  const assets = {};
+  for (const L of layers) if (L.type === 'image' && state.assets[L.assetId]) {
+    const a = state.assets[L.assetId]; assets[L.assetId] = { name: a.name, dataUrl: a.dataUrl };
+  }
+  return { layers: JSON.parse(JSON.stringify(layers)), assets };
+}
+async function restore(snap) {
+  for (const [id, a] of Object.entries(snap.assets || {})) {
+    try { await assetFromDataUrl(id, a.dataUrl, a.name); } catch { }
+  }
+  return snap.layers.filter(L => L.type !== 'image' || state.assets[L.assetId]).map(L => Object.assign({}, COMMON, L));
+}
+let persistT;
+function persist() {
+  clearTimeout(persistT);
+  persistT = setTimeout(() => LS.set('wm.session', snapshot()), 250);
+}
+function renderPresets() {
+  const ul = $('#presetList');
+  $('#presetEmpty').hidden = state.presets.length > 0;
+  ul.innerHTML = state.presets.map((p, i) => `<li><span title="${esc(p.name)}">${esc(p.name)}</span>
+    <button class="btn sm" data-load="${i}">Apply</button><button class="icon-btn danger" data-delp="${i}" title="Delete preset">${icon('trash', 14)}</button></li>`).join('');
+}
+$('#savePreset').onclick = () => {
+  if (!state.layers.length) { toast('Add a watermark first'); return; }
+  const name = prompt('Name this preset:', `Preset ${state.presets.length + 1}`);
+  if (!name) return;
+  state.presets.push(Object.assign({ name: name.trim() }, snapshot()));
+  if (!LS.set('wm.presets', state.presets)) { state.presets.pop(); toast('Not enough browser storage. Try a smaller logo.'); return; }
+  renderPresets(); toast('Preset saved');
+};
+$('#presetList').addEventListener('click', async e => {
+  const l = e.target.closest('[data-load]'), d = e.target.closest('[data-delp]');
+  if (l) {
+    const prev = state.layers.slice(), prevSel = state.selectedId;
+    const p = state.presets[+l.dataset.load];
+    setLayers(await restore(p));
+    toast(`Applied “${p.name}”`, { label: 'Undo', run: () => { state.layers = prev; state.selectedId = prevSel; refreshLayersUI(); } });
+  } else if (d) {
+    const i = +d.dataset.delp;
+    if (!confirm(`Delete preset “${state.presets[i].name}”?`)) return;
+    state.presets.splice(i, 1); LS.set('wm.presets', state.presets); renderPresets();
+  }
+});
+
+/* =============================== image list =============================== */
+const grid = $('#grid');
+function itemKey(f, rel) { return rel + '|' + f.size + '|' + f.lastModified; }
+const keys = new Set();
+
+function addFiles(entries) {
+  let skipped = 0, dup = 0;
+  const fresh = [];
+  for (const { file, rel } of entries) {
+    if (!(IMG_EXT.test(file.name) || /^image\//.test(file.type))) { skipped++; continue; }
+    if (file.name.startsWith('._')) { skipped++; continue; } // macOS resource forks
+    const k = itemKey(file, rel);
+    if (keys.has(k)) { dup++; continue; }
+    keys.add(k);
+    fresh.push({ id: uid(), file, name: file.name, rel: rel || file.name, key: k });
+  }
+  const coll = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  fresh.sort((a, b) => coll.compare(a.rel, b.rel));
+  const frag = document.createDocumentFragment();
+  for (const it of fresh) {
+    state.items.push(it); state.byId.set(it.id, it);
+    const t = document.createElement('div');
+    t.className = 'tile'; t.dataset.id = it.id; t.title = it.rel;
+    t.innerHTML = `<div class="tile-in"><img alt="" draggable="false"><div class="tile-name">${esc(it.name)}</div></div><button class="tile-x" title="Remove">${icon('x', 12)}</button>`;
+    frag.appendChild(t);
+    io.observe(t);
+  }
+  grid.appendChild(frag);
+  if (fresh.length) {
+    const msg = [`Added ${fresh.length.toLocaleString()} image${fresh.length > 1 ? 's' : ''}`];
+    if (dup) msg.push(`${dup} already added`);
+    if (skipped) msg.push(`${skipped} non-image file${skipped > 1 ? 's' : ''} skipped`);
+    toast(msg.join(' · '));
+    if (!state.currentId) setCurrent(fresh[0].id);
+  } else if (entries.length) toast(dup ? 'Those images are already in the list' : 'No supported images found');
+  updateCounts();
+}
+function removeItem(id) {
+  const it = state.byId.get(id); if (!it) return;
+  const i = state.items.indexOf(it);
+  state.items.splice(i, 1); state.byId.delete(id); keys.delete(it.key);
+  if (it.thumb) URL.revokeObjectURL(it.thumb);
+  const t = grid.querySelector(`[data-id="${id}"]`); if (t) { io.unobserve(t); t.remove(); }
+  if (state.currentId === id) setCurrent(state.items[Math.min(i, state.items.length - 1)]?.id || null);
+  updateCounts();
+}
+function clearAll() {
+  for (const it of state.items) if (it.thumb) URL.revokeObjectURL(it.thumb);
+  state.items = []; state.byId.clear(); keys.clear(); thumbQ.length = 0;
+  grid.innerHTML = '';
+  setCurrent(null); updateCounts();
+}
+function updateCounts() {
+  const n = state.items.length;
+  $('#imgCount').textContent = n.toLocaleString();
+  $('#btnClear').hidden = n === 0;
+  let bytes = 0; for (const it of state.items) bytes += it.file.size;
+  $('#imgSummary').textContent = n ? `${n.toLocaleString()} image${n > 1 ? 's' : ''} · ${fmtBytes(bytes)}` : 'No images yet';
+  updateExportBtn();
+}
+function updateExportBtn() {
+  const n = state.items.length;
+  $('#btnExport').disabled = !n || !state.layers.some(l => l.visible);
+  $('#exportLabel').textContent = n ? `Export ${n.toLocaleString()} image${n > 1 ? 's' : ''}` : 'Export';
+}
+const fmtBytes = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB';
+
+grid.addEventListener('click', e => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  if (e.target.closest('.tile-x')) { removeItem(t.dataset.id); return; }
+  setCurrent(t.dataset.id);
+});
+$('#btnClear').onclick = () => {
+  if (state.items.length > 3 && !confirm(`Remove all ${state.items.length.toLocaleString()} images from the list? (Your files are not touched.)`)) return;
+  clearAll();
+};
+
+/* ---------- lazy thumbnails ---------- */
+const thumbQ = [];
+let thumbActive = 0;
+const io = new IntersectionObserver(ents => {
+  for (const e of ents) if (e.isIntersecting) {
+    io.unobserve(e.target);
+    const it = state.byId.get(e.target.dataset.id);
+    if (it && !it.thumb) thumbQ.push(it);
+  }
+  pumpThumbs();
+}, { root: grid, rootMargin: '300px' });
+function pumpThumbs() {
+  while (thumbActive < 3 && thumbQ.length) {
+    const it = thumbQ.pop(); // newest first = what's on screen now
+    if (!state.byId.has(it.id) || it.thumb) continue;
+    thumbActive++;
+    makeThumb(it).finally(() => { thumbActive--; pumpThumbs(); });
+  }
+}
+async function makeThumb(it) {
+  const tile = grid.querySelector(`[data-id="${it.id}"]`);
+  try {
+    const d = await decodeMain(it.file, 200);
+    const s = 200 / Math.max(d.w, d.h, 1);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(d.w * Math.min(1, s))); c.height = Math.max(1, Math.round(d.h * Math.min(1, s)));
+    c.getContext('2d').drawImage(d.src, 0, 0, c.width, c.height);
+    d.close();
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+    if (!state.byId.has(it.id)) return;
+    it.thumb = URL.createObjectURL(blob);
+    if (tile) { const img = tile.querySelector('img'); img.onload = () => img.classList.add('ld'); img.src = it.thumb; }
+  } catch { tile?.classList.add('bad'); }
+}
+
+/* decode a File on the main thread (bitmap first, <img> fallback e.g. for HEIC in Safari) */
+async function decodeMain(file, thumbWidth) {
+  try {
+    const bmp = thumbWidth
+      ? await createImageBitmap(file, { resizeWidth: thumbWidth * 2, resizeQuality: 'medium' })
+      : await createImageBitmap(file);
+    return { src: bmp, w: bmp.width, h: bmp.height, close: () => bmp.close() };
+  } catch (err) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return { src: img, w: img.naturalWidth, h: img.naturalHeight, close: () => URL.revokeObjectURL(url) };
+    } catch { URL.revokeObjectURL(url); throw err; }
+  }
+}
+
+/* ---------- adding files: pickers, drag & drop ---------- */
+$$('[data-pick]').forEach(b => b.addEventListener('click', () => (b.dataset.pick === 'folder' ? $('#folderInput') : $('#fileInput')).click()));
+$('#fileInput').addEventListener('change', e => { addFiles(Array.from(e.target.files, f => ({ file: f, rel: f.name }))); e.target.value = ''; });
+$('#folderInput').addEventListener('change', e => { addFiles(Array.from(e.target.files, f => ({ file: f, rel: f.webkitRelativePath || f.name }))); e.target.value = ''; });
+
+async function filesFromDrop(dt) {
+  const out = [], entries = [];
+  for (const it of dt.items) {
+    if (it.kind !== 'file') continue;
+    const en = it.webkitGetAsEntry && it.webkitGetAsEntry();
+    if (en) entries.push(en); else { const f = it.getAsFile(); if (f) out.push({ file: f, rel: f.name }); }
+  }
+  const walk = async en => {
+    if (en.isFile) {
+      try { const f = await new Promise((res, rej) => en.file(res, rej)); out.push({ file: f, rel: en.fullPath.replace(/^\//, '') }); } catch { }
+    } else if (en.isDirectory) {
+      const r = en.createReader();
+      for (; ;) {
+        const batch = await new Promise((res, rej) => r.readEntries(res, rej)).catch(() => []);
+        if (!batch.length) break;
+        await Promise.all(batch.map(walk));
+      }
+    }
+  };
+  await Promise.all(entries.map(walk));
+  return out;
+}
+let dragDepth = 0;
+const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $('#dropOverlay').hidden = false; $('#dropzone').classList.add('over'); });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; $('#dropOverlay').hidden = true; $('#dropzone').classList.remove('over'); } });
+window.addEventListener('drop', async e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; $('#dropOverlay').hidden = true; $('#dropzone').classList.remove('over');
+  const hasDir = Array.from(e.dataTransfer.items).some(i => i.webkitGetAsEntry?.()?.isDirectory);
+  if (hasDir) toast('Scanning folders…');
+  addFiles(await filesFromDrop(e.dataTransfer));
+});
+
+/* =============================== preview =============================== */
+const cv = $('#preview');
+const pctx = cv.getContext('2d');
+let base = null;             // downscaled copy of the current image
+let boxes = [];
+let compare = false;
+let previewToken = 0;
+const PREVIEW_MAX = 2000;
+
+function varsFor(it, idx, total) {
+  const d = new Date();
+  return { filename: baseName(it.name), name: baseName(it.name), ext: extOf(it.name), n: idx + 1, total, date: today(), year: d.getFullYear() };
+}
+function currentIndex() { return state.items.findIndex(i => i.id === state.currentId); }
+
+function setCurrent(id) {
+  const prev = grid.querySelector('.tile.active'); if (prev) prev.classList.remove('active');
+  state.currentId = id;
+  if (id) { const t = grid.querySelector(`[data-id="${id}"]`); if (t) { t.classList.add('active'); t.scrollIntoView({ block: 'nearest' }); } }
+  loadPreview();
+}
+async function loadPreview() {
+  const it = state.byId.get(state.currentId);
+  const token = ++previewToken;
+  $('#emptyState').hidden = !!it;
+  cv.hidden = !it;
+  if (!it) { base = null; $('#previewName').textContent = 'No image'; $('#previewInfo').textContent = 'Add images to begin'; return; }
+  const idx = currentIndex();
+  $('#previewName').textContent = it.rel;
+  $('#previewInfo').textContent = `${idx + 1} of ${state.items.length.toLocaleString()} · loading…`;
+  try {
+    const d = await decodeMain(it.file);
+    if (token !== previewToken) { d.close(); return; }
+    const s = Math.min(1, PREVIEW_MAX / Math.max(d.w, d.h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(d.w * s)); c.height = Math.max(1, Math.round(d.h * s));
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(d.src, 0, 0, c.width, c.height);
+    d.close();
+    it.w = d.w; it.h = d.h;
+    base = c;
+    $('#previewInfo').textContent = `${idx + 1} of ${state.items.length.toLocaleString()} · ${d.w} × ${d.h} · ${fmtBytes(it.file.size)}`;
+    fitCanvas(); drawPreview();
+  } catch {
+    if (token !== previewToken) return;
+    base = null; cv.hidden = true;
+    $('#previewInfo').textContent = 'This browser can’t read this file';
+  }
+}
+let rafId = 0;
+function schedulePreview() { if (!rafId) rafId = requestAnimationFrame(() => { rafId = 0; drawPreview(); }); }
+function drawPreview() {
+  if (!base) return;
+  if (cv.width !== base.width || cv.height !== base.height) { cv.width = base.width; cv.height = base.height; fitCanvas(); }
+  pctx.setTransform(1, 0, 0, 1, 0, 0);
+  pctx.clearRect(0, 0, cv.width, cv.height);
+  pctx.drawImage(base, 0, 0);
+  if (compare) { boxes = []; return; }
+  const it = state.byId.get(state.currentId);
+  boxes = WM.render(pctx, cv.width, cv.height, state.layers, previewAssets(), varsFor(it, currentIndex(), state.items.length));
+  // selection outline
+  const si = state.layers.findIndex(l => l.id === state.selectedId), b = boxes[si];
+  if (b && !b.tile) {
+    const px = cv.width / Math.max(1, cv.clientWidth);
+    pctx.save();
+    pctx.translate(b.cx, b.cy); pctx.rotate(b.rad);
+    const p = 4 * px;
+    pctx.lineWidth = 1.5 * px;
+    pctx.strokeStyle = 'rgba(255,255,255,.9)'; pctx.setLineDash([]);
+    pctx.strokeRect(-b.w / 2 - p, -b.h / 2 - p, b.w + 2 * p, b.h + 2 * p);
+    pctx.strokeStyle = '#5557c8'; pctx.setLineDash([5 * px, 4 * px]);
+    pctx.strokeRect(-b.w / 2 - p, -b.h / 2 - p, b.w + 2 * p, b.h + 2 * p);
+    pctx.restore();
+  }
+}
+function fitCanvas() {
+  if (!base) return;
+  const a = $('#stageArea');
+  const pad = window.innerWidth < 860 ? 24 : 56;
+  const s = Math.min((a.clientWidth - pad) / base.width, (a.clientHeight - pad) / base.height);
+  cv.style.width = Math.max(1, Math.floor(base.width * s)) + 'px';
+  cv.style.height = Math.max(1, Math.floor(base.height * s)) + 'px';
+}
+new ResizeObserver(() => { fitCanvas(); schedulePreview(); }).observe($('#stageArea'));
+
+function navigate(d) {
+  if (!state.items.length) return;
+  const i = currentIndex();
+  setCurrent(state.items[(i + d + state.items.length) % state.items.length].id);
+}
+$('#prevBtn').onclick = () => navigate(-1);
+$('#nextBtn').onclick = () => navigate(1);
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]') || !$('#exportModal').hidden) return;
+  if (e.key === 'ArrowLeft') { navigate(-1); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { navigate(1); e.preventDefault(); }
+});
+const cmp = $('#compareBtn');
+const setCompare = v => { if (compare !== v) { compare = v; drawPreview(); } };
+cmp.addEventListener('pointerdown', () => setCompare(true));
+['pointerup', 'pointerleave', 'pointercancel'].forEach(t => cmp.addEventListener(t, () => setCompare(false)));
+
+/* ---------- drag to move ---------- */
+let drag = null;
+function canvasPoint(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height };
+}
+function hitTest(p) {
+  const tol = 6 * cv.width / Math.max(1, cv.clientWidth);
+  for (let i = state.layers.length - 1; i >= 0; i--) {
+    const b = boxes[i]; if (!b || b.tile) continue;
+    const dx = p.x - b.cx, dy = p.y - b.cy, c = Math.cos(-b.rad), s = Math.sin(-b.rad);
+    const lx = dx * c - dy * s, ly = dx * s + dy * c;
+    if (Math.abs(lx) <= b.w / 2 + tol && Math.abs(ly) <= b.h / 2 + tol) return i;
+  }
+  return -1;
+}
+cv.addEventListener('pointerdown', e => {
+  const p = canvasPoint(e), i = hitTest(p);
+  if (i < 0) return;
+  const L = state.layers[i], b = boxes[i];
+  if (state.selectedId !== L.id) { state.selectedId = L.id; renderLayerList(); renderEditor(); }
+  drag = { L, ox: p.x - b.cx, oy: p.y - b.cy };
+  cv.setPointerCapture(e.pointerId);
+  cv.style.cursor = 'grabbing';
+  schedulePreview();
+});
+cv.addEventListener('pointermove', e => {
+  const p = canvasPoint(e);
+  if (!drag) { cv.style.cursor = hitTest(p) >= 0 ? 'grab' : 'default'; return; }
+  const L = drag.L;
+  let x = clamp((p.x - drag.ox) / cv.width, 0, 1), y = clamp((p.y - drag.oy) / cv.height, 0, 1);
+  if (Math.abs(x - 0.5) < 0.012) x = 0.5;   // gentle snap to the center lines
+  if (Math.abs(y - 0.5) < 0.012) y = 0.5;
+  if (L.anchor !== 'custom') {
+    L.anchor = 'custom';
+    $$('#anchorGrid button').forEach(b => b.classList.remove('on'));
+    const n = $('#anchorNote'); if (n) { n.textContent = 'Custom position. Pick a spot on the grid to snap back.'; n.classList.add('accent'); }
+  }
+  L.x = x; L.y = y;
+  schedulePreview();
+});
+const endDrag = () => { if (drag) { drag = null; cv.style.cursor = 'grab'; persist(); } };
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+/* =============================== export =============================== */
+const EXPORT_DEFAULTS = { format: 'original', quality: 90, resize: 'none', maxW: 2048, maxH: 2048, percent: 50, pattern: '{name}_watermarked', dest: CAN.fsAccess ? 'folder' : 'zip', keepStructure: true, overwrite: false };
+let cfg = Object.assign({}, EXPORT_DEFAULTS, LS.get('wm.export', {}));
+const MIME = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const EXT_FOR = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MIME_FOR_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+
+function mimeFor(it) {
+  if (cfg.format !== 'original') return MIME[cfg.format];
+  const m = MIME_FOR_EXT[extOf(it.name).toLowerCase()] || it.file.type;
+  if (m === 'image/jpeg' || m === 'image/png') return m;
+  if (m === 'image/webp' && CAN.webp) return m;
+  return 'image/png'; // GIF, BMP, AVIF, HEIC… → lossless PNG
+}
+const sanitize = s => s.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^\.+/, '').trim();
+function outPath(it, idx, total, mime) {
+  const orig = extOf(it.name);
+  const ext = MIME_FOR_EXT[orig.toLowerCase()] === mime ? orig : EXT_FOR[mime] || 'png';
+  const name = sanitize(String(cfg.pattern || '{name}').replace(/\{(\w+)\}/g, (m, k) =>
+    k === 'name' ? baseName(it.name) : k === 'n' ? String(idx + 1).padStart(String(total).length, '0') : k === 'date' ? today() : m)) || baseName(it.name);
+  const dir = cfg.keepStructure ? it.rel.split('/').slice(0, -1).map(sanitize).filter(Boolean).join('/') : '';
+  return (dir ? dir + '/' : '') + name + '.' + ext;
+}
+
+/* ---- export dialog ---- */
+function openExport() {
+  if (!state.items.length) return;
+  $('#exportSetup').hidden = false; $('#exportRun').hidden = true;
+  $('#exportModal').hidden = false;
+  if (!CAN.fsAccess) {
+    $('#destFolderCard').classList.add('disabled');
+    $('#destFolderCard input').disabled = true;
+    $('#destFolderNote').textContent = 'Not supported in this browser. Use Chrome or Edge for direct folder saving.';
+    if (cfg.dest === 'folder') cfg.dest = 'zip';
+  }
+  if (!CAN.webp) { const b = $('#fmtSeg [data-v="webp"]'); b.disabled = true; b.title = 'WebP export is not supported in this browser'; if (cfg.format === 'webp') cfg.format = 'jpeg'; }
+  syncExportUI();
+}
+function syncExportUI() {
+  $$('#fmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.format));
+  $$('#resizeSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.resize));
+  $('#qualityField').hidden = cfg.format === 'png';
+  $('#quality').value = cfg.quality; $('#qualityOut').textContent = cfg.quality + '%';
+  $('#fitRow').hidden = cfg.resize !== 'fit';
+  $('#pctRow').hidden = cfg.resize !== 'percent';
+  $('#maxW').value = cfg.maxW; $('#maxH').value = cfg.maxH;
+  $('#pct').value = cfg.percent; $('#pctOut').textContent = cfg.percent + '%';
+  paintRanges($('#exportModal'));
+  $('#pattern').value = cfg.pattern;
+  $$('input[name=dest]').forEach(r => { r.checked = r.value === cfg.dest; });
+  $('#keepStruct').checked = cfg.keepStructure;
+  $('#overwrite').checked = cfg.overwrite;
+  $('#overwriteRow').hidden = cfg.dest !== 'folder';
+  const hasDirs = state.items.some(i => i.rel.includes('/'));
+  $('#keepStruct').closest('.check').hidden = !hasDirs;
+  const it = state.byId.get(state.currentId) || state.items[0];
+  if (it) $('#nameExample').textContent = '→ ' + outPath(it, 0, state.items.length, mimeFor(it));
+  const n = state.items.length;
+  $('#startLabel').textContent = cfg.dest === 'folder' ? `Choose folder & start` : `Export ${n.toLocaleString()} image${n > 1 ? 's' : ''}`;
+}
+$('#btnExport').onclick = openExport;
+$('#fmtSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) { cfg.format = b.dataset.v; syncExportUI(); } });
+$('#resizeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.resize = b.dataset.v; syncExportUI(); } });
+$('#quality').addEventListener('input', e => { cfg.quality = +e.target.value; $('#qualityOut').textContent = cfg.quality + '%'; });
+$('#pct').addEventListener('input', e => { cfg.percent = +e.target.value; $('#pctOut').textContent = cfg.percent + '%'; });
+$('#maxW').addEventListener('input', e => { cfg.maxW = clamp(+e.target.value || 0, 0, 20000); });
+$('#maxH').addEventListener('input', e => { cfg.maxH = clamp(+e.target.value || 0, 0, 20000); });
+$('#pattern').addEventListener('input', e => { cfg.pattern = e.target.value; const it = state.byId.get(state.currentId) || state.items[0]; $('#nameExample').textContent = '→ ' + outPath(it, 0, state.items.length, mimeFor(it)); });
+$$('input[name=dest]').forEach(r => r.addEventListener('change', () => { cfg.dest = r.value; syncExportUI(); }));
+$('#keepStruct').addEventListener('change', e => { cfg.keepStructure = e.target.checked; syncExportUI(); });
+$('#overwrite').addEventListener('change', e => { cfg.overwrite = e.target.checked; });
+$$('#exportModal [data-close]').forEach(b => b.onclick = () => { $('#exportModal').hidden = true; LS.set('wm.export', cfg); });
+
+/* ---- output sinks ---- */
+class DirSink {
+  constructor(root, overwrite) { this.root = root; this.overwrite = overwrite; this.dirs = new Map(); this.claimed = new Set(); }
+  dir(path) {
+    if (!path) return Promise.resolve(this.root);
+    if (!this.dirs.has(path)) {
+      const parts = path.split('/');
+      const parent = parts.slice(0, -1).join('/');
+      this.dirs.set(path, this.dir(parent).then(d => d.getDirectoryHandle(parts[parts.length - 1], { create: true })));
+    }
+    return this.dirs.get(path);
+  }
+  async uniqueName(d, dirPath, name) {
+    const b = baseName(name), e = name.slice(b.length);
+    for (let i = 1; ; i++) {
+      const n = i === 1 ? name : `${b} (${i})${e}`;
+      const key = dirPath + '/' + n.toLowerCase();
+      if (this.claimed.has(key)) continue;
+      if (!this.overwrite) {
+        try { await d.getFileHandle(n); continue; } catch (err) { if (err.name !== 'NotFoundError' && err.name !== 'TypeMismatchError') throw err; if (err.name === 'TypeMismatchError') continue; }
+      }
+      this.claimed.add(key);
+      return n;
+    }
+  }
+  async add(path, buf) {
+    const parts = path.split('/'), file = parts.pop(), dirPath = parts.join('/');
+    const d = await this.dir(dirPath);
+    const n = await this.uniqueName(d, dirPath, file);
+    const fh = await d.getFileHandle(n, { create: true });
+    const w = await fh.createWritable();
+    await w.write(buf);
+    await w.close();
+  }
+  async finish() { }
+}
+
+/* Minimal "stored" ZIP writer (images are already compressed). Splits into parts below 4 GB limits. */
+const ZIP_PART_LIMIT = 1024 * 1024 * 1024;
+class ZipSink {
+  constructor(baseName) { this.baseName = baseName; this.part = 1; this.names = new Set(); this.reset(); this.downloaded = []; }
+  reset() { this.chunks = []; this.central = []; this.offset = 0; this.count = 0; }
+  dosTime(d) {
+    return { time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate() };
+  }
+  unique(path) {
+    let p = path, i = 1;
+    const b = baseName(path), e = path.slice(b.length);
+    while (this.names.has(p.toLowerCase())) p = `${b} (${++i})${e}`;
+    this.names.add(p.toLowerCase());
+    return p;
+  }
+  async add(path, buf, crc) {
+    const size = buf.byteLength;
+    if (this.count && (this.offset + size + 1e6 > ZIP_PART_LIMIT || this.count >= 65000)) this.flush(false);
+    const name = new TextEncoder().encode(this.unique(path));
+    const { time, date } = this.dosTime(new Date());
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, this.offset, true);
+    // wrap data in a Blob right away so the browser can page it out of JS memory
+    this.chunks.push(lh.buffer, name, new Blob([buf]));
+    this.central.push(ch.buffer, name);
+    this.offset += 30 + name.length + size;
+    this.count++;
+  }
+  flush(last) {
+    let cdSize = 0; for (const c of this.central) cdSize += c.byteLength;
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, this.count, true); e.setUint16(10, this.count, true);
+    e.setUint32(12, cdSize, true); e.setUint32(16, this.offset, true);
+    const blob = new Blob([...this.chunks, ...this.central, e.buffer], { type: 'application/zip' });
+    const name = last && this.part === 1 ? `${this.baseName}.zip` : `${this.baseName}-part${this.part}.zip`;
+    download(blob, name);
+    this.downloaded.push(name);
+    this.part++;
+    this.reset();
+  }
+  async finish() { if (this.count) this.flush(true); }
+}
+class SingleSink {
+  async add(path, buf, crc, mime) { this.file = { name: path.split('/').pop(), blob: new Blob([buf], { type: mime }) }; }
+  async finish() { if (this.file) download(this.file.blob, this.file.name); }
+}
+
+/* ---- worker pool ---- */
+let workerUrl = null;
+function getWorkerUrl() {
+  if (workerUrl) return workerUrl;
+  const main = function () {
+    let layers = [], assets = {};
+    self.onmessage = async e => {
+      const m = e.data;
+      if (m.type === 'init') {
+        try {
+          layers = m.layers; assets = {};
+          for (const id in m.assets) assets[id] = await createImageBitmap(m.assets[id]);
+          let fontsOk = true;
+          for (const f of m.fonts) {
+            try { const ff = new FontFace(f.family, f.buffer); await ff.load(); self.fonts.add(ff); } catch (err) { fontsOk = false; }
+          }
+          self.postMessage({ type: 'ready', fontsOk });
+        } catch (err) { self.postMessage({ type: 'fail', message: String(err && err.message || err) }); }
+        return;
+      }
+      if (m.type === 'job') {
+        try {
+          const bmp = await createImageBitmap(m.file);
+          const r = await WM.processSource(bmp, bmp.width, bmp.height, m.opts, layers, assets, m.vars);
+          bmp.close();
+          self.postMessage({ type: 'done', buf: r.buf, crc: r.crc, mime: r.mime }, [r.buf]);
+        } catch (err) {
+          self.postMessage({ type: 'error', message: String(err && err.message || err) });
+        }
+      }
+    };
+  };
+  const src = document.getElementById('wm-core').textContent + '\n(' + main.toString() + ')();';
+  workerUrl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  return workerUrl;
+}
+class PoolWorker {
+  constructor(url) {
+    this.w = new Worker(url);
+    this.pending = null;
+    this.w.onmessage = e => {
+      const m = e.data, p = this.pending; this.pending = null;
+      if (!p) return;
+      if (m.type === 'ready') p.res(m);
+      else if (m.type === 'done') p.res(m);
+      else p.rej(new Error(m.message || 'Worker failed'));
+    };
+    this.w.onerror = e => { e.preventDefault?.(); const p = this.pending; this.pending = null; p?.rej(new Error(e.message || 'Worker crashed')); };
+  }
+  call(msg, timeout) {
+    return new Promise((res, rej) => {
+      this.pending = { res, rej };
+      this.w.postMessage(msg);
+      if (timeout) setTimeout(() => { if (this.pending && this.pending.res === res) { this.pending = null; rej(new Error('Worker timed out')); } }, timeout);
+    });
+  }
+  terminate() { this.w.terminate(); const p = this.pending; this.pending = null; p?.rej(new Error('cancelled')); }
+}
+
+/* ---- run ---- */
+let run = null;
+async function processMain(file, opts, layers, vars) {
+  const d = await decodeMain(file);
+  try { return await WM.processSource(d.src, d.w, d.h, opts, layers, previewAssets(), vars); }
+  finally { d.close(); }
+}
+
+$('#startExport').onclick = async () => {
+  LS.set('wm.export', cfg);
+  let dirHandle = null;
+  if (cfg.dest === 'folder') {
+    try { dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'wm-output' }); }
+    catch (err) { if (err.name !== 'AbortError') toast('Could not open folder: ' + errMsg(err)); return; }
+  }
+  startRun(dirHandle);
+};
+
+async function startRun(dirHandle) {
+  const items = state.items.slice(), total = items.length;
+  const layers = JSON.parse(JSON.stringify(state.layers.filter(l => l.visible)));
+  const sink = dirHandle ? new DirSink(dirHandle, cfg.overwrite) : total === 1 ? new SingleSink() : new ZipSink(`watermarked-${today()}`);
+  const baseOpts = { quality: cfg.quality / 100, resize: cfg.resize, maxW: cfg.maxW, maxH: cfg.maxH, percent: cfg.percent, crc: sink instanceof ZipSink };
+
+  run = { cancelled: false, done: 0, ok: 0, errors: [], t0: performance.now(), total, current: '', pool: [] };
+  $('#exportSetup').hidden = true; $('#exportRun').hidden = false;
+  $('#runIcon').innerHTML = ''; $('#runTitle').textContent = 'Watermarking…';
+  $('#runSub').textContent = 'Keep this tab open while it works.';
+  $('#runCancel').hidden = false; $('#runClose').hidden = true;
+  $('#runErrors').hidden = true; $('#runErrList').innerHTML = '';
+  updateRunUI();
+  window.addEventListener('beforeunload', warnUnload);
+
+  // Spin up workers (fall back to the main thread if the browser can't)
+  const usedFonts = state.fonts.filter(f => layers.some(l => l.type === 'text' && l.font === f.css));
+  if (CAN.offscreen) {
+    const n = clamp((navigator.hardwareConcurrency || 4) - 1, 2, 8);
+    try {
+      const url = getWorkerUrl();
+      const assets = {};
+      for (const L of layers) if (L.type === 'image' && state.assets[L.assetId]) assets[L.assetId] = state.assets[L.assetId].blob;
+      const fonts = usedFonts.map(f => ({ family: f.family, buffer: f.buffer }));
+      for (let i = 0; i < n; i++) run.pool.push(new PoolWorker(url));
+      const ready = await Promise.all(run.pool.map(w => w.call({ type: 'init', layers, assets, fonts }, 20000)));
+      if (usedFonts.length && ready.some(r => !r.fontsOk)) throw new Error('fonts unsupported in workers');
+    } catch (err) {
+      console.warn('Using main thread:', err);
+      run.pool.forEach(w => w.terminate()); run.pool = [];
+    }
+  }
+  const lanes = run.pool.length ? run.pool : [null, null];
+
+  let next = 0;
+  const lane = async w => {
+    while (!run.cancelled && next < total) {
+      const idx = next++, it = items[idx];
+      run.current = it.rel;
+      const opts = Object.assign({ mime: mimeFor(it) }, baseOpts);
+      const vars = varsFor(it, idx, total);
+      let res = null, err = null;
+      try {
+        res = w ? await w.call({ type: 'job', file: it.file, opts, vars }) : await processMain(it.file, opts, layers, vars);
+      } catch (e) {
+        err = e;
+        if (w && !run.cancelled) { try { res = await processMain(it.file, opts, layers, vars); err = null; } catch (e2) { err = e2; } }
+      }
+      if (run.cancelled) break;
+      if (res) {
+        try { await sink.add(outPath(it, idx, total, res.mime), res.buf, res.crc, res.mime); run.ok++; }
+        catch (e) { err = e; }
+      }
+      if (err) run.errors.push({ name: it.rel, msg: errMsg(err) });
+      run.done++;
+      scheduleRunUI();
+    }
+  };
+  await Promise.all(lanes.map(lane));
+  run.pool.forEach(w => w.terminate());
+  if (!run.cancelled) {
+    try { await sink.finish(); } catch (e) { run.errors.push({ name: 'Saving output', msg: errMsg(e) }); }
+  }
+  window.removeEventListener('beforeunload', warnUnload);
+  finishRun(sink, dirHandle);
+}
+function warnUnload(e) { e.preventDefault(); e.returnValue = ''; }
+let runRaf = 0;
+function scheduleRunUI() { if (!runRaf) runRaf = requestAnimationFrame(() => { runRaf = 0; updateRunUI(); }); }
+function fmtDur(s) {
+  if (!isFinite(s)) return '';
+  s = Math.round(s);
+  return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${pad2(s % 60)}s` : `${Math.floor(s / 3600)}h ${pad2(Math.floor(s % 3600 / 60))}m`;
+}
+function updateRunUI() {
+  const r = run, pct = r.total ? Math.floor(r.done / r.total * 100) : 0;
+  const el = (performance.now() - r.t0) / 1000, rate = r.done / Math.max(el, 0.001);
+  $('#runBar').style.width = pct + '%';
+  $('#runCount').textContent = `${r.done.toLocaleString()} / ${r.total.toLocaleString()}`;
+  $('#runPct').textContent = pct + '%';
+  $('#runRate').textContent = r.done ? `${rate.toFixed(rate < 10 ? 1 : 0)} images/sec · ${r.pool.length ? r.pool.length + ' parallel workers' : 'single thread'}` : 'Starting…';
+  $('#runEta').textContent = r.done && r.done < r.total ? `about ${fmtDur((r.total - r.done) / rate)} left` : '';
+  $('#runFile').textContent = r.current || ' ';
+  if (r.errors.length) {
+    $('#runErrors').hidden = false;
+    $('#runErrSum').textContent = `${r.errors.length} image${r.errors.length > 1 ? 's' : ''} failed`;
+    const ul = $('#runErrList');
+    for (let i = ul.children.length; i < Math.min(r.errors.length, 500); i++) {
+      const li = document.createElement('li'); li.textContent = `${r.errors[i].name}: ${r.errors[i].msg}`; ul.appendChild(li);
+    }
+  }
+}
+function finishRun(sink, dirHandle) {
+  updateRunUI();
+  const r = run, secs = (performance.now() - r.t0) / 1000;
+  $('#runCancel').hidden = true; $('#runClose').hidden = false;
+  $('#runFile').textContent = ' '; $('#runEta').textContent = '';
+  if (r.cancelled) {
+    $('#runIcon').innerHTML = `<span class="done-icon warn">${icon('alert', 18)}</span>`;
+    $('#runTitle').textContent = 'Export cancelled';
+    $('#runSub').textContent = dirHandle ? `${r.ok.toLocaleString()} image${r.ok === 1 ? ' was' : 's were'} saved before cancelling.` : 'Nothing was downloaded.';
+    return;
+  }
+  const failed = r.errors.length;
+  $('#runIcon').innerHTML = `<span class="done-icon ${failed ? 'warn' : ''}">${icon(failed ? 'alert' : 'check', 18)}</span>`;
+  $('#runTitle').textContent = failed ? `Done, ${failed} failed` : 'All done!';
+  let where = '';
+  if (dirHandle) where = `Saved to “${dirHandle.name}”.`;
+  else if (sink instanceof ZipSink) where = sink.downloaded.length > 1 ? `Downloaded as ${sink.downloaded.length} ZIP parts.` : 'Your ZIP download has started.';
+  else where = 'Your download has started.';
+  $('#runSub').textContent = `Watermarked ${r.ok.toLocaleString()} image${r.ok === 1 ? '' : 's'} in ${fmtDur(secs) || '0s'}. ${where}`;
+  $('#runRate').textContent = r.ok ? `${(r.ok / Math.max(secs, 0.001)).toFixed(1)} images/sec on average` : '';
+}
+$('#runCancel').onclick = () => {
+  if (!run) return;
+  run.cancelled = true;
+  run.pool.forEach(w => w.terminate());
+  $('#runTitle').textContent = 'Cancelling…';
+};
+$('#runClose').onclick = () => { $('#exportModal').hidden = true; };
+
+/* =============================== boot =============================== */
+(async function init() {
+  hydrateIcons();
+  state.presets = LS.get('wm.presets', []);
+  renderPresets();
+  const snap = LS.get('wm.session', null);
+  if (snap && snap.layers) { try { state.layers = await restore(snap); } catch { state.layers = []; } }
+  state.selectedId = state.layers.length ? state.layers[state.layers.length - 1].id : null;
+  refreshLayersUI();
+  updateCounts();
+  loadPreview();
+  // test hook
+  window.__wm = { state, addFiles, startRun, setLayers, newTextLayer, cfg: () => cfg, run: () => run };
+})();
+</script>
+</body>
+</html>
