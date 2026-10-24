@@ -13,3 +13,5 @@ If you use Git-connected deployment instead, use `deploy` as the publish directo
 Official instructions: https://docs.netlify.com/deploy/create-deploys/
 
 Image Converter is available at `/convert/`. Include all subfolders when uploading: it uses its own TIFF libraries and the HEIC decoder in `watermark/vendor`.
+
+The converter now uses `engine.js`, `pool.js`, and `worker.js` for parallel processing. Upload these with the rest of the `deploy` folder.

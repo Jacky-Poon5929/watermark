@@ -3,6 +3,11 @@ const assert=(v,msg)=>{if(!v)throw Error(msg)};
 const fixture=(w,b64,name,type)=>new w.File([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],name,{type});
 document.querySelector('#app').onload=async()=>{const w=document.querySelector('#app').contentWindow,d=w.document;const logs=[];
 try{
+const NativeWorker=w.Worker; let activeJobs=0, peakJobs=0, workerCount=0;
+w.Worker=class extends NativeWorker {
+ constructor(...args){super(...args);workerCount++;this.addEventListener('message',e=>{if(!e.data.ready)activeJobs--;});}
+ postMessage(...args){activeJobs++;peakJobs=Math.max(peakJobs,activeJobs);return super.postMessage(...args);}
+};
 const png=fixture(w,'iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAALElEQVR4nO3OsQkAAAzDsPz/dAp9oUMXgb0rTXp5uwwAAAAAAAAAAAAA8A0YgD17vZC8ilIAAAAASUVORK5CYII=','sample.png','image/png'), heic=fixture(w,'AAAAJGZ0eXBoZWljAAAAAG1pZjFNaVBybWlhZk1pSEJoZWljAAABhG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAADnBpdG0AAAAAAAEAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMxAAAAAORpcHJwAAAAw2lwY28AAAATY29scm5jbHgAAgACAAaAAAAADGNsbGkAywBAAAAAFGlzcGUAAAAAAAACAAAAAYAAAAAJaXJvdAAAAAAQcGl4aQAAAAADCAgIAAAAb2h2Y0MBA3AAAACwAAAAAAA/8AD8/fj4AAALA6AAAQAXQAEMAf//A3AAAAMAsAAAAwAAAwA/cCShAAEAIUIBAQNwAAADALAAAAMAAAMAP6AEAgGBYh7kWVTcCAgYAqIAAQAJRAHAYXLIQFMkAAAAGWlwbWEAAAAAAAAAAQABBoECAwWGhAAAAB5pbG9jAAAAAEQAAAEAAQAAAAEAAAG4AAAA0QAAAAFtZGF0AAAAAAAAAOEAAADNKAGvjDyiI0WKEiRAgOHgRoF8//3az//25fsv0ApPsW/Z6UeyUC0pyzcAqqjo2dDpkhBrcXrqhHP3Hdkt1ugLDFjJCLss+L2jI6PWLWQ3dcN06njFwAAAAwFhPm3F/OOKi/LQdc98AAADAOaAIrFiI+1inhedTQAACMgKr16i2EUn9gwAATUC4fCKAA8b5AAEjAPSwAABsPSABYwAAAMAADYGkASsAAADAALgYgEBAAADAB7wkCfgAAADAKWZAoYAAAMDqOQioAAADYGBJw==','sample.heic','image/heic');
 const transfer=new w.DataTransfer(); transfer.items.add(png); transfer.items.add(heic);d.querySelector('#files').files=transfer.files;d.querySelector('#files').dispatchEvent(new w.Event('change'));
 assert(d.querySelectorAll('.file').length===2,'Upload list');
@@ -19,7 +24,7 @@ logs.push(format+' output + HEIC input + roundtrip OK');
 }
 w.addFiles([new w.File(['bad'],'broken.png',{type:'image/png'})]);d.querySelector('#format').value='png';await d.querySelector('#convert').onclick();assert(w.eval('items.filter(i=>i.result).length')===2,'Batch continues after failure');assert(d.querySelectorAll('.error').length===1,'Error visible');logs.push('Corrupt file isolated OK');
 const zip=await w.ConverterCodecs.zip(w.eval('items.filter(i=>i.result).map(i=>({name:i.name,blob:i.result}))'));assert(zip.size>0,'ZIP');
-d.querySelector('#clear').onclick();assert(d.querySelectorAll('.file').length===0,'Clear');logs.push('ZIP and clear OK');
+d.querySelector('#clear').onclick();assert(d.querySelectorAll('.file').length===0,'Clear');logs.push('ZIP and clear OK');assert(workerCount>0,'Real workers launched');assert(peakJobs>=2,'Overlapping worker jobs');logs.push('Parallel workers verified: peak '+peakJobs);
 document.querySelector('#result').textContent='PASS\n'+logs.join('\n');
 }catch(e){document.querySelector('#result').textContent='FAIL '+e.stack+'\n'+logs.join('\n');}};
 </script>

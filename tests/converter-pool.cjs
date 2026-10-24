@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+const Pool = require('../deploy/convert/pool.js');
+const delay = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  assert.equal(Pool.workerCount({hardwareConcurrency:16,deviceMemory:8},Array(10).fill({size:100}),0),4);
+  assert.equal(Pool.workerCount({hardwareConcurrency:16,deviceMemory:2},Array(10).fill({size:100}),4),1);
+  assert.equal(Pool.workerCount({hardwareConcurrency:16,deviceMemory:8},[{size:30*1024**2},{size:100}],4),1);
+  let active=0, peak=0, seen=[];
+  const pool=new Pool(async f=>f);
+  pool.workers=Array.from({length:2},()=>({convert:async f=>{active++;peak=Math.max(peak,active);await delay(f===0?20:2);active--;return f;},close(){}}));
+  await pool.run([0,1,2,3],async(item,process)=>seen.push(await process(item)));
+  assert.equal(peak,2);assert.deepEqual(seen.slice().sort(),[0,1,2,3]);
+  let stop=false,started=0;
+  await pool.run([0,1,2,3,4],async(item,process)=>{started++;await process(item);stop=true;},()=>stop);
+  assert.equal(started,2);
+  active=0;peak=0;
+  pool.fallback=async f=>{active++;peak=Math.max(peak,active);await delay(2);active--;if(f===1)throw Error('bad');return f;};
+  pool.workers.forEach(w=>w.convert=async()=>{throw Error('worker failed')});
+  const results=[];
+  await pool.run([0,1,2],async(item,process)=>{try{results.push(await process(item))}catch{results.push('error')}});
+  assert.equal(peak,1);assert.deepEqual(results,[0,'error',2]);pool.close();
+  console.log('Passed concurrency limits, simultaneous work, cancellation, failure isolation and serialized fallback.');
+})().catch(e=>{console.error(e);process.exitCode=1});

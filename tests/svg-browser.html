@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><pre id="result">RUNNING</pre><iframe id="app" src="../deploy/watermark/index.html"></iframe><script>
+const assert=(v,m)=>{if(!v)throw Error(m)};
+document.querySelector('#app').onload=async()=>{
+const w=document.querySelector('#app').contentWindow, logs=[];
+try {
+const cases=[
+ ['sized.svg','image/svg+xml','<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"><rect width="50" height="50" fill="red"/></svg>'],
+ ['viewbox.svg','','<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><rect width="50" height="50" fill="red"/></svg>'],
+ ['percent.svg','application/octet-stream','<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 50"><rect width="50" height="50" fill="red"/></svg>']
+];
+for(const [name,type,text]of cases){
+ const id=await w.addAsset(new w.File([text],name,{type}),name);
+ const asset=w.eval('state.assets')[id];
+ assert(asset.blob.type==='image/png',name+' stored PNG');assert(asset.bmp.width===2400&&asset.bmp.height===1200,name+' aspect ratio');
+ const c=w.document.createElement('canvas');c.width=2;c.height=1;c.getContext('2d').drawImage(asset.bmp,0,0,2,1);
+ const pixels=c.getContext('2d').getImageData(0,0,2,1).data;assert(pixels[0]===255&&pixels[3]===255&&pixels[7]===0,name+' pixels and alpha');
+ await w.assetFromDataUrl(id+'restored',asset.dataUrl,name);
+ assert(w.eval('state.assets')[id+'restored'].bmp.width===2400,'PNG preset with SVG filename');
+ const worker=new w.Worker(new URL('svg-worker.js',location.href));
+ const answer=new Promise((resolve,reject)=>{worker.onmessage=e=>resolve(e.data);worker.onerror=reject});worker.postMessage(asset.blob);
+ assert((await answer).width===2400,'Export worker decode');worker.terminate();logs.push(name+' upload, transparency, preset, worker OK');
+}
+const legacy='data:image/svg+xml;base64,'+btoa(cases[0][2]);await w.assetFromDataUrl('legacy',legacy,'old.svg');assert(w.eval('state.assets.legacy.blob.type')==='image/png','Legacy preset');
+let failed=false;try{await w.addAsset(new w.File(['bad'],'broken.svg',{type:'image/svg+xml'}),'broken.svg')}catch{failed=true}assert(failed,'Malformed SVG rejected');
+const png=w.eval('state.assets.legacy.blob');await w.addAsset(png,'raster.png');logs.push('Legacy SVG presets, malformed SVG, PNG regression OK');
+document.querySelector('#result').textContent='PASS\n'+logs.join('\n');
+}catch(e){document.querySelector('#result').textContent='FAIL '+e.stack+'\n'+logs.join('\n')}
+};
+</script>

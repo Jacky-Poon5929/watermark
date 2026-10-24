@@ -449,7 +449,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
         <div class="layers-empty">Add a text or logo watermark, or start from a style:</div>
         <div class="starter" id="starterGrid"></div>
       </div>
-      <input type="file" id="logoInput" accept="image/*,.heic,.heif" hidden>
+      <input type="file" id="logoInput" accept="image/*,.svg,.heic,.heif" hidden>
       <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" hidden>
     </section>
 
@@ -1002,26 +1002,60 @@ $('#logoInput').addEventListener('change', async e => {
 function readDataUrl(blob) {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
 }
+// Give SVG logos explicit dimensions before loading them as an image. Many
+// exported logos only have a viewBox, which bitmap decoders cannot size reliably.
+async function prepareSvgLogo(blob) {
+  const doc = new DOMParser().parseFromString(await blob.text(), 'image/svg+xml');
+  const svg = doc.documentElement;
+  if (doc.querySelector('parsererror') || svg.localName !== 'svg') throw new Error('The SVG logo is not valid SVG.');
+  const viewBox = (svg.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  const hasBox = viewBox.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0;
+  const length = value => {
+    const match = /^([\d.]+)\s*(px|pt|pc|in|cm|mm|q)?$/i.exec((value || '').trim());
+    if (!match) return 0;
+    const units = { px: 1, pt: 96 / 72, pc: 16, in: 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6 };
+    return Number(match[1]) * units[(match[2] || 'px').toLowerCase()];
+  };
+  let w = length(svg.getAttribute('width')), h = length(svg.getAttribute('height'));
+  if (hasBox) { if (!w && !h) { w = viewBox[2]; h = viewBox[3]; } else if (!w) w = h * viewBox[2] / viewBox[3]; else if (!h) h = w * viewBox[3] / viewBox[2]; }
+  w = w || 300; h = h || 150;
+  if (!Number.isFinite(w + h) || w <= 0 || h <= 0) throw new Error('The SVG logo has invalid dimensions.');
+  if (!hasBox) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  // Rasterise at a useful logo resolution while retaining aspect ratio/transparency.
+  const scale = 2400 / Math.max(w, h);
+  svg.setAttribute('width', String(Math.max(1, Math.round(w * scale))));
+  svg.setAttribute('height', String(Math.max(1, Math.round(h * scale))));
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  return new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' });
+}
 async function addAsset(blob, name, id = uid()) {
-  if (isHeicFile(blob)) blob = await convertHeic(blob);
-  const bmp = await createImageBitmap(blob);
-  // keep stored logos reasonably sized so presets fit in browser storage
-  let store = blob;
-  if (Math.max(bmp.width, bmp.height) > 2400 || blob.size > 1.5e6) {
-    const s = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
-    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
-    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-    store = await new Promise(r => c.toBlob(r, 'image/png'));
-  }
-  const dataUrl = await readDataUrl(store);
-  state.assets[id] = { blob: store, dataUrl, bmp, name: name || 'Logo' };
-  return id;
+  const svg = /^image\/svg\+xml(?:;|$)/i.test(blob.type) || (!/^image\//i.test(blob.type) && /\.svg$/i.test(name || blob.name || ''));
+  if (svg) blob = await prepareSvgLogo(blob);
+  else if (isHeicFile(blob)) blob = await convertHeic(blob);
+  const decoded = await decodeMain(blob);
+  let store = blob, bmp;
+  try {
+    // PNG is also understood by export workers and persisted preset loaders.
+    if (svg || Math.max(decoded.w, decoded.h) > 2400 || blob.size > 1.5e6 || !(decoded.src instanceof ImageBitmap)) {
+      const scale = Math.min(1, 2400 / Math.max(decoded.w, decoded.h));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(decoded.w * scale)); c.height = Math.max(1, Math.round(decoded.h * scale));
+      try {
+        c.getContext('2d').drawImage(decoded.src, 0, 0, c.width, c.height);
+        store = await new Promise((resolve, reject) => c.toBlob(value => value ? resolve(value) : reject(new Error('Could not render the logo.')), 'image/png'));
+      } finally { c.width = c.height = 1; }
+    }
+    bmp = await createImageBitmap(store);
+    const dataUrl = await readDataUrl(store);
+    state.assets[id] = { blob: store, dataUrl, bmp, name: name || 'Logo' };
+    return id;
+  } catch (err) { bmp?.close(); throw err; }
+  finally { decoded.close(); }
 }
 async function assetFromDataUrl(id, dataUrl, name) {
   if (state.assets[id]) return;
   const blob = await (await fetch(dataUrl)).blob();
-  const bmp = await createImageBitmap(blob);
-  state.assets[id] = { blob, dataUrl, bmp, name };
+  await addAsset(blob, name, id);
 }
 function gcAssets() {
   const used = new Set(state.layers.filter(l => l.type === 'image').map(l => l.assetId));
