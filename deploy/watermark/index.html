@@ -391,7 +391,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
     <div class="panel-head"><h2>Images</h2><span id="imgCount" class="pill">0</span></div>
     <div id="dropzone" class="dropzone">
       <div class="dz-icon"><span data-icon="upload" data-size="22"></span></div>
-      <p>Drop images or whole folders</p>
+      <p>Drop images or whole folders · HEIC supported</p>
       <div class="dz-actions">
         <button class="btn sm" data-pick="files"><span data-icon="image" data-size="14"></span>Images</button>
         <button class="btn sm" data-pick="folder"><span data-icon="folder" data-size="14"></span>Folder</button>
@@ -449,7 +449,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
         <div class="layers-empty">Add a text or logo watermark, or start from a style:</div>
         <div class="starter" id="starterGrid"></div>
       </div>
-      <input type="file" id="logoInput" accept="image/*" hidden>
+      <input type="file" id="logoInput" accept="image/*,.heic,.heif" hidden>
       <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" hidden>
     </section>
 
@@ -476,7 +476,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
         <div class="field">
           <div class="flabel"><span>Format</span></div>
           <div class="seg" id="fmtSeg">
-            <button data-v="original">Same as original</button><button data-v="jpeg">JPEG</button><button data-v="png">PNG</button><button data-v="webp">WebP</button>
+            <button data-v="original" title="HEIC/HEIF and other non-exportable formats are saved as PNG">Same as original</button><button data-v="jpeg">JPEG</button><button data-v="png">PNG</button><button data-v="webp">WebP</button>
           </div>
         </div>
         <div class="field" id="qualityField">
@@ -1003,6 +1003,7 @@ function readDataUrl(blob) {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
 }
 async function addAsset(blob, name, id = uid()) {
+  if (isHeicFile(blob)) blob = await convertHeic(blob);
   const bmp = await createImageBitmap(blob);
   // keep stored logos reasonably sized so presets fit in browser storage
   let store = blob;
@@ -1255,13 +1256,14 @@ function removeItem(id) {
   const i = state.items.indexOf(it);
   state.items.splice(i, 1); state.byId.delete(id); keys.delete(it.key);
   if (it.thumb) URL.revokeObjectURL(it.thumb);
+  heicCache.delete(it.file);
   const t = grid.querySelector(`[data-id="${id}"]`); if (t) { io.unobserve(t); t.remove(); }
   if (state.currentId === id) setCurrent(state.items[Math.min(i, state.items.length - 1)]?.id || null);
   updateCounts();
 }
 function clearAll() {
   for (const it of state.items) if (it.thumb) URL.revokeObjectURL(it.thumb);
-  state.items = []; state.byId.clear(); keys.clear(); thumbQ.length = 0;
+  state.items = []; state.byId.clear(); keys.clear(); thumbQ.length = 0; heicCache.clear();
   grid.innerHTML = '';
   setCurrent(null); updateCounts();
 }
@@ -1325,7 +1327,42 @@ async function makeThumb(it) {
   } catch { tile?.classList.add('bad'); }
 }
 
-/* decode a File on the main thread (bitmap first, <img> fallback e.g. for HEIC in Safari) */
+/* HEIC decoding stays local. Load the bundled decoder only when needed. */
+const isHeicFile = file => /\.hei[cf]$/i.test(file.name || '') || /^image\/hei[cf](?:-sequence)?$/i.test(file.type || '');
+let heicDecoderPromise;
+const heicPending = new WeakMap();
+const heicCache = new Map();
+function loadHeicDecoder() {
+  if (!heicDecoderPromise) {
+    heicDecoderPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'vendor/heic-to-1.5.2.js';
+      script.onload = () => typeof window.HeicTo === 'function'
+        ? resolve(window.HeicTo) : reject(new Error('HEIC decoder did not initialise.'));
+      script.onerror = () => { script.remove(); reject(new Error('Could not load HEIC support. Reload the page and try again.')); };
+      document.head.appendChild(script);
+    }).catch(err => { heicDecoderPromise = null; throw err; });
+  }
+  return heicDecoderPromise;
+}
+function convertHeic(file) {
+  if (heicCache.has(file)) return Promise.resolve(heicCache.get(file));
+  if (heicPending.has(file)) return heicPending.get(file);
+  const task = loadHeicDecoder().then(decoder => decoder({ blob: file, type: 'image/png' })).then(blob => {
+    if (!(blob instanceof Blob) || !blob.size) throw new Error('HEIC conversion returned no image.');
+    // Bound retained full-resolution conversions; concurrent requests share one decode.
+    if (blob.size <= 32 * 1024 * 1024) {
+      while (heicCache.size >= 2) heicCache.delete(heicCache.keys().next().value);
+      heicCache.set(file, blob);
+    }
+    return blob;
+  }).catch(err => { throw new Error('Could not decode HEIC image: ' + (err.message || String(err))); })
+    .finally(() => heicPending.delete(file));
+  heicPending.set(file, task);
+  return task;
+}
+
+/* Try native decoding first, then convert HEIC to PNG for unsupported browsers. */
 async function decodeMain(file, thumbWidth) {
   try {
     const bmp = thumbWidth
@@ -1339,7 +1376,11 @@ async function decodeMain(file, thumbWidth) {
       img.src = url;
       await img.decode();
       return { src: img, w: img.naturalWidth, h: img.naturalHeight, close: () => URL.revokeObjectURL(url) };
-    } catch { URL.revokeObjectURL(url); throw err; }
+    } catch {
+      URL.revokeObjectURL(url);
+      if (isHeicFile(file)) return decodeMain(await convertHeic(file), thumbWidth);
+      throw err;
+    }
   }
 }
 

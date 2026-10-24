@@ -1,0 +1,25 @@
+<!doctype html><body><pre id="result">RUNNING</pre><iframe id="app" src="../deploy/convert/index.html"></iframe><script>
+const assert=(v,msg)=>{if(!v)throw Error(msg)};
+const fixture=(w,b64,name,type)=>new w.File([Uint8Array.from(atob(b64),c=>c.charCodeAt(0))],name,{type});
+document.querySelector('#app').onload=async()=>{const w=document.querySelector('#app').contentWindow,d=w.document;const logs=[];
+try{
+const png=fixture(w,'iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAALElEQVR4nO3OsQkAAAzDsPz/dAp9oUMXgb0rTXp5uwwAAAAAAAAAAAAA8A0YgD17vZC8ilIAAAAASUVORK5CYII=','sample.png','image/png'), heic=fixture(w,'AAAAJGZ0eXBoZWljAAAAAG1pZjFNaVBybWlhZk1pSEJoZWljAAABhG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAADnBpdG0AAAAAAAEAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMxAAAAAORpcHJwAAAAw2lwY28AAAATY29scm5jbHgAAgACAAaAAAAADGNsbGkAywBAAAAAFGlzcGUAAAAAAAACAAAAAYAAAAAJaXJvdAAAAAAQcGl4aQAAAAADCAgIAAAAb2h2Y0MBA3AAAACwAAAAAAA/8AD8/fj4AAALA6AAAQAXQAEMAf//A3AAAAMAsAAAAwAAAwA/cCShAAEAIUIBAQNwAAADALAAAAMAAAMAP6AEAgGBYh7kWVTcCAgYAqIAAQAJRAHAYXLIQFMkAAAAGWlwbWEAAAAAAAAAAQABBoECAwWGhAAAAB5pbG9jAAAAAEQAAAEAAQAAAAEAAAG4AAAA0QAAAAFtZGF0AAAAAAAAAOEAAADNKAGvjDyiI0WKEiRAgOHgRoF8//3az//25fsv0ApPsW/Z6UeyUC0pyzcAqqjo2dDpkhBrcXrqhHP3Hdkt1ugLDFjJCLss+L2jI6PWLWQ3dcN06njFwAAAAwFhPm3F/OOKi/LQdc98AAADAOaAIrFiI+1inhedTQAACMgKr16i2EUn9gwAATUC4fCKAA8b5AAEjAPSwAABsPSABYwAAAMAADYGkASsAAADAALgYgEBAAADAB7wkCfgAAADAKWZAoYAAAMDqOQioAAADYGBJw==','sample.heic','image/heic');
+const transfer=new w.DataTransfer(); transfer.items.add(png); transfer.items.add(heic);d.querySelector('#files').files=transfer.files;d.querySelector('#files').dispatchEvent(new w.Event('change'));
+assert(d.querySelectorAll('.file').length===2,'Upload list');
+for(const format of ['jpeg','png','webp','bmp','tiff','ico']){
+d.querySelector('#format').value=format;d.querySelector('#format').dispatchEvent(new w.Event('input'));
+await d.querySelector('#convert').onclick();
+assert(w.eval('items.every(i=>i.result)'),format+' failed: '+d.querySelector('#list').textContent);
+const result=w.eval('items[0].result');
+assert(result.type===w.ConverterCodecs.formats[format][0],format+' MIME');
+if(format!=='ico') {const img=await w.decode(new w.File([result],'roundtrip.'+format,{type:result.type}));assert(img.w===32&&img.h===24,format+' dimensions');img.close();}
+else {const b=await result.arrayBuffer(),v=new DataView(b);assert(v.getUint16(2,true)===1,'ICO header');assert(v.getUint32(18,true)===22,'ICO data offset');const img=await w.decode(result.slice(22,result.size,'image/png'));assert(img.w===256&&img.h===256,'ICO size');img.close();}
+if(format==='png'){const img=await w.decode(result);const c=d.createElement('canvas');c.width=32;c.height=24;c.getContext('2d').drawImage(img.src,0,0);assert(c.getContext('2d').getImageData(24,12,1,1).data[3]===0,'PNG transparency');img.close();}
+logs.push(format+' output + HEIC input + roundtrip OK');
+}
+w.addFiles([new w.File(['bad'],'broken.png',{type:'image/png'})]);d.querySelector('#format').value='png';await d.querySelector('#convert').onclick();assert(w.eval('items.filter(i=>i.result).length')===2,'Batch continues after failure');assert(d.querySelectorAll('.error').length===1,'Error visible');logs.push('Corrupt file isolated OK');
+const zip=await w.ConverterCodecs.zip(w.eval('items.filter(i=>i.result).map(i=>({name:i.name,blob:i.result}))'));assert(zip.size>0,'ZIP');
+d.querySelector('#clear').onclick();assert(d.querySelectorAll('.file').length===0,'Clear');logs.push('ZIP and clear OK');
+document.querySelector('#result').textContent='PASS\n'+logs.join('\n');
+}catch(e){document.querySelector('#result').textContent='FAIL '+e.stack+'\n'+logs.join('\n');}};
+</script>
